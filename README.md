@@ -142,6 +142,33 @@ this on examples
 
 ### API
 
+#### back
+Run provided callback in next tick of event loop. This is what for
+process.nextTick was usually used. However for very strange reason
+starting from node v10 it fails when called recursively. 
+
+To be honest its failry stupid because now process.nextTick became
+useless because will it work or not depends on callee. It was honest
+just to say to stop use process.nextTick, there is no any purpose for
+it any longer. Function safe.run will use process.nextTick or its new successor
+setImmediate in newer versions of node.
+
+Anyway process.nextTick usually was used to break recursion or to maintain async
+behavior when function return something right away without calling
+trully async function (IO mostly). It was required to write something
+like:
+
+	if (cached)
+		return process.nextTick(function () {callback(null,cached})
+with back:
+
+	if (cached)
+		return safe.back(callback,null,cached) 
+
+@param {Function} callback
+@param argument1
+@param argumentN
+
 #### result
 Transform synchronious function call result to callback
 
