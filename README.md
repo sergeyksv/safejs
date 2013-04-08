@@ -142,6 +142,9 @@ this on examples
 
 ### API
 
+#### noop
+Empty function, does nothing. Sometime useful.
+
 #### back
 Run provided callback in next tick of event loop. This is what for
 process.nextTick was usually used. However for very strange reason
