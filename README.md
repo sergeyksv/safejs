@@ -142,6 +142,11 @@ this on examples
 
 ### API
 
+#### yield
+Yields execution of function giving chance to other stuff run
+
+@param {Function} callback
+
 #### noop
 Empty function, does nothing. Sometime useful.
 
