@@ -1,11 +1,10 @@
 Module provides set of handy function to deal with thrown errors, callbacks and
-nodejs alike error passing (first function argument). 
+nodejs alike error passing (first function argument). It can be used standalone or as addon for [Async](https://github.com/caolan/async) library
 
-The goal is to make code more stable (by catching thrown exception) and avoid
-some routine calls. Idea is inspired in Step library which catches error and
-convert them into callback function calls. Async library which appears more
-handy for dealing with async functions (has reacher functionality)  missing this.
-With safe library it is easy to plug-in this when required.
+The goal is to make code more stable, readable and avoid
+some routine calls. Idea is inspired in [Step](https://github.com/creationix/step) library which catches thrown errors and convert them into callback function calls. 
+
+[Async](https://github.com/caolan/async) library which appears more handy missing this. With safe library it is easy to plug-in this when required.
 
 Function are kind of chainable, so instead of `safe.trap(safe.sure(function () {} ))`
 it is possible to use `safe.trap_sure(function() {})`
@@ -142,6 +141,38 @@ this on examples
 
 ### API
 
+#### spread
+Wraps function with several parameters into function that accept array of paramters. Useful to process async.series or async.parallel result calls.
+
+@param {Function} - normal function 
+
+#### Classic async
+	], function (err, res) {
+		if (err) return callback(err)
+		var me = res[0];
+		var users = res[1];
+
+
+#### Safe enhanced
+	],safe.sure_spread(callback, function (me, users) {
+
+#### async
+Complimentary helper function to "async" libray similar to async.apply. The difference is that it bind function call to some specific object context.
+
+@param {Object} - context object
+@param {String} - function name
+@param ... - function arguments
+
+#### Classic async
+	async.series([
+		function (cb) {
+			users.findOne({gender:"male"},cb)
+		}
+		
+#### Safe enhanced
+	async.series([
+		safe.async(users,"findOne",{gender:"male"})
+
 #### yield
 Yields execution of function giving chance to other stuff run
 
@@ -192,11 +223,13 @@ Strip (hide) first parameter from wrapped function and ensure that
 controll is passed to it when no error happpens. I.e. it does do
 routine error check `if (err) return callback(err)`
 
+If passed non function it just returned thru callback
+
 _callback is optional, when omited (function get one parameter) it assumes
 callback as last parameter of wrapped function_
 
 @param {Function} callback or wrapped function
-@param {Function} wrapped function
+@param {Function} wrapped function or value
 
 #### trap
 Wrap function call into try catch, pass thrown error to callback
@@ -217,4 +250,5 @@ errors.
 
 #### pseudo chains
 
-Underscore chains like trap_safe, trap_safe_result are possible
+sure_result, sure_spread
+trap_sure, trap_sure_result - __deprecated__ Since version 0.2 all functions catch thrown exceprtions
