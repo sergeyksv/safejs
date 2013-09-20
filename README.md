@@ -251,4 +251,5 @@ errors.
 #### pseudo chains
 
 sure_result, sure_spread
+
 trap_sure, trap_sure_result - __deprecated__ Since version 0.2 all functions catch thrown exceprtions
