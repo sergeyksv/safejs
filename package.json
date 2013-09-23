@@ -17,6 +17,6 @@
   "devDependencies": {
 	"mocha":""
   }, "scripts": {
-    "test":"mocha ./test/test.js"
+    "test":"mocha -bR spec ./test/test.js"
   }  
 }
