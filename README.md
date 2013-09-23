@@ -148,6 +148,7 @@ _callback is optional, when omited (function get one parameter) it assumes
 callback as last parameter of wrapped function_
 
 @param {Function} callback or wrapped function
+
 @param {Function} fn wrapped function
 
 
@@ -162,6 +163,7 @@ _callback is optional, when omited (function get one parameter) it assumes
 callback as last parameter of wrapped function_
 
 @param {Function} callback or wrapped function
+
 @param {Function} wrapped function or value
 
 #### trap
@@ -171,6 +173,7 @@ _callback is optional, when omited (function get one parameter) it assumes
 callback as last parameter of wrapped function_
 
 @param {Function} callback or wrapped function
+
 @param {Function} fn wrapped function
 
 #### run
@@ -179,6 +182,7 @@ Usefull when you need to handle local callback results, even if there are
 errors. 
 
 @param {Function} wrapped function
+
 @param {Function} callback
 
 #### yield
@@ -213,7 +217,9 @@ with back:
 		return safe.back(callback,null,cached) 
 
 @param {Function} callback
+
 @param argument1
+
 @param argumentN
 
 #### spread
@@ -236,7 +242,9 @@ Using safe:
 Complimentary helper function to "async" libray similar to async.apply. The difference is that it bind function call to some specific object context.
 
 @param {Object} - context object
+
 @param {String} - function name
+
 @param ... - function arguments
 
 Normal async code:
@@ -255,6 +263,7 @@ Using safe:
 Similar to _trap_ but has reverse order of parameters. Both paramters are required. Callback will be appended to wrapped function as last parameter. Useful to simulate try catch behavior for functions that didn't receive callback but still need error handling
 
 @param {Function} fn wrapped function
+
 @param {Function} callback or wrapped function
 
 #### pseudo chains
