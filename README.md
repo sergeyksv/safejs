@@ -9,6 +9,8 @@ some routine calls. Idea is inspired in [Step](https://github.com/creationix/ste
 Function are kind of chainable, so instead of `safe.trap(safe.sure(function () {} ))`
 it is possible to use `safe.trap_sure(function() {})`
 
+[![Build Status](https://travis-ci.org/sergeyksv/safejs.png?branch=master)](https://travis-ci.org/sergeyksv/safejs)
+
 ### Plain poor code:
 	async.series([
 		function (callback) {
