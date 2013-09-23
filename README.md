@@ -141,73 +141,6 @@ this on examples
 
 ### API
 
-#### spread
-Wraps function with several parameters into function that accept array of paramters. Useful to process async.series or async.parallel result calls.
-
-@param {Function} - normal function 
-
-#### Classic async
-	], function (err, res) {
-		if (err) return callback(err)
-		var me = res[0];
-		var users = res[1];
-
-
-#### Safe enhanced
-	],safe.sure_spread(callback, function (me, users) {
-
-#### async
-Complimentary helper function to "async" libray similar to async.apply. The difference is that it bind function call to some specific object context.
-
-@param {Object} - context object
-@param {String} - function name
-@param ... - function arguments
-
-#### Classic async
-	async.series([
-		function (cb) {
-			users.findOne({gender:"male"},cb)
-		}
-		
-#### Safe enhanced
-	async.series([
-		safe.async(users,"findOne",{gender:"male"})
-
-#### yield
-Yields execution of function giving chance to other stuff run
-
-@param {Function} callback
-
-#### noop
-Empty function, does nothing. Sometime useful.
-
-#### back
-Run provided callback in next tick of event loop. This is what for
-process.nextTick was usually used. However for very strange reason
-starting from node v10 it fails when called recursively. 
-
-To be honest its failry stupid because now process.nextTick became
-useless because will it work or not depends on callee. It was honest
-just to say to stop use process.nextTick, there is no any purpose for
-it any longer. Function safe.run will use process.nextTick or its new successor
-setImmediate in newer versions of node.
-
-Anyway process.nextTick usually was used to break recursion or to maintain async
-behavior when function return something right away without calling
-trully async function (IO mostly). It was required to write something
-like:
-
-	if (cached)
-		return process.nextTick(function () {callback(null,cached})
-with back:
-
-	if (cached)
-		return safe.back(callback,null,cached) 
-
-@param {Function} callback
-@param argument1
-@param argumentN
-
 #### result
 Transform synchronious function call result to callback
 
@@ -248,8 +181,84 @@ errors.
 @param {Function} wrapped function
 @param {Function} callback
 
+#### yield
+Yields execution of function giving chance to other stuff run
+
+@param {Function} callback
+
+#### noop
+Empty function, does nothing. Sometime useful.
+
+#### back
+Run provided callback in next tick of event loop. This is what for
+process.nextTick was usually used. However for very strange reason
+starting from node v10 it fails when called recursively. 
+
+To be honest its failry stupid because now process.nextTick became
+useless because will it work or not depends on callee. It was honest
+just to say to stop use process.nextTick, there is no any purpose for
+it any longer. Function safe.run will use process.nextTick or its new successor
+setImmediate in newer versions of node.
+
+Anyway process.nextTick usually was used to break recursion or to maintain async
+behavior when function return something right away without calling
+trully async function (IO mostly). It was required to write something
+like:
+
+	if (cached)
+		return process.nextTick(function () {callback(null,cached})
+with back:
+
+	if (cached)
+		return safe.back(callback,null,cached) 
+
+@param {Function} callback
+@param argument1
+@param argumentN
+
+#### spread
+Wraps function with several parameters into function that accept array of paramters. Useful to process async.series or async.parallel result calls.
+
+@param {Function} - normal function 
+
+Normal async code:
+
+	], function (err, res) {
+		if (err) return callback(err)
+		var me = res[0];
+		var users = res[1];
+
+Using safe:
+
+	],safe.sure_spread(callback, function (me, users) {
+
+#### async
+Complimentary helper function to "async" libray similar to async.apply. The difference is that it bind function call to some specific object context.
+
+@param {Object} - context object
+@param {String} - function name
+@param ... - function arguments
+
+Normal async code:
+
+	async.series([
+		function (cb) {
+			users.findOne({gender:"male"},cb)
+		}
+
+Using safe:
+		
+	async.series([
+		safe.async(users,"findOne",{gender:"male"})
+
+#### wrap
+Similar to _trap_ but has reverse order of parameters. Both paramters are required. Callback will be appended to wrapped function as last parameter. Useful to simulate try catch behavior for functions that didn't receive callback but still need error handling
+
+@param {Function} fn wrapped function
+@param {Function} callback or wrapped function
+
 #### pseudo chains
 
 sure_result, sure_spread
 
-trap_sure, trap_sure_result - __deprecated__ Since version 0.2 all functions catch thrown exceprtions
+trap_sure, trap_sure_result - __deprecated__ Since version 0.1.x all functions catch thrown exceprtions
