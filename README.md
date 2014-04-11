@@ -270,7 +270,7 @@ Similar to _trap_ but has reverse order of parameters. Both paramters are requir
 
 
 #### onError
-This method allows to receive information about raised exception. Very suitable for error logging at the debugging stage
+The method allows to receive information about raised exception. It's very suitable for error logging at the debugging stage
 
 @param {Function} callback function, takes parameter which is error description
 
