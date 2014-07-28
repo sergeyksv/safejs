@@ -201,23 +201,47 @@ describe("safe",function () {
 			var a = 0;
 			safe.chain(function (cb) {
 					safe.yield(function () {
-						a++;
-						cb();
+						cb(null, 'test');
 					});
-				})
-				.then(function (cb) {
 					a++;
+				})
+				.then(function (test, cb) {
+					if (test !== 'test')
+						return cb(new Error("Wrong behavior"));
+
 					safe.yield(function () {
-						cb(a === 2 ? null : new Error("Wrong behavior"));
+						cb(a === 2 ? null : new Error("Wrong behavior"), a);
 					});
-				})
-				.then(function (cb) {
 					a++;
+				})
+				.then(function (a, cb) {
 					safe.yield(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"))
 					});
+					a++;
 				})
 				.done(done);
+		})
+	})
+	describe("each", function () {
+		it("should execute asynchronous each (array)", function (done) {
+			var a = 0;
+			safe.each([1,2,3,4,5], function (i, cb) {
+				safe.yield(function () {
+					cb(i === a ? null : new Error("Wrong behavior"));
+				});
+				a++;
+			}, done);
+		})
+
+		it("should execute asynchronous series (array)", function (done) {
+			var a = 0;
+			safe.eachSeries([1,2,3,4,5], function (i, cb) {
+				safe.yield(function () {
+					cb(i === a ? null : new Error("Wrong behavior"));
+				});
+				a++;
+			}, done);
 		})
 	})
 })
