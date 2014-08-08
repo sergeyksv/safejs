@@ -223,6 +223,36 @@ describe("safe",function () {
 				.done(done);
 		})
 	})
+	describe("waterfall", function () {
+		it("should execute step by step asynchronous functions in waterfall", function (done) {
+			var a = 0;
+			safe.waterfall([
+				function (cb) {
+					safe.yield(function () {
+						cb(null, 'test');
+					});
+					a++;
+				},
+				function (test, cb) {
+					if (test !== 'test')
+						return cb(new Error("Wrong behavior"));
+
+					safe.yield(function () {
+						cb(a === 2 ? null : new Error("Wrong behavior"), a);
+					});
+					a++;
+				},
+				function (a, cb) {
+					safe.yield(function () {
+						cb(a === 3 ? null : new Error("Wrong behavior"), "final")
+					});
+					a++;
+				}
+			], function (err, result) {
+				done((err || result !== "final") ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+	})
 	describe("each", function () {
 		it("should execute asynchronous each (array)", function (done) {
 			var a = 0;
