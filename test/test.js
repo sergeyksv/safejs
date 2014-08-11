@@ -277,7 +277,7 @@ describe("safe",function () {
 				done((err || result[0] !== "first" || result[1] !== "middle" || result[2] !== "last") ? (err || new Error("Wrong behavior")) : null);
 			});
 		})
-		it("should execute step by step asynchronous functions in parallel", function (done) {
+		it("should execute asynchronous functions in parallel", function (done) {
 			safe.parallel({
 				"2": function (cb) {
 					safe.yield(function () {
@@ -289,6 +289,27 @@ describe("safe",function () {
 						cb(null, "middle");
 					});
 				},
+				"0": function (cb) {
+					safe.yield(function () {
+						cb(null, 'first');
+					});
+				}
+			}, function (err, result) {
+				done((err || result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+		it("should automatically resolve dependencies execute asynchronous functions", function (done) {
+			safe.auto({
+				"2": ["0", "1", function (cb, result) {
+					safe.yield(function () {
+						cb((result["0"] !== "first" || result["1"] !== "middle") ? new Error("Wrong behavior") : null, "last");
+					});
+				}],
+				"1": ["0", function (cb, result) {
+					safe.yield(function () {
+						cb((result["0"] !== "first") ? new Error("Wrong behavior") : null, "middle");
+					});
+				}],
 				"0": function (cb) {
 					safe.yield(function () {
 						cb(null, 'first');
