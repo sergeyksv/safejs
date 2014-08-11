@@ -341,4 +341,46 @@ describe("safe",function () {
 			}, done);
 		})
 	})
+	describe("whilst", function () {
+		it("should execute until a condition is false", function (done) {
+			var a = 0;
+			var flag = false;
+
+			safe.whilst(
+				function () {
+					flag = false;
+					return a < 5;
+				},
+				function (cb) {
+					if (flag)
+						throw new Error("Wrong behavior");
+
+					safe.yield(function () {
+						cb();
+					});
+					a++;
+				}, done);
+		})
+	})
+	describe("doWhilst", function () {
+		it("should execute until a condition is false (post check)", function (done) {
+			var a = 0;
+			var flag = true;
+
+			safe.doWhilst(
+				function (cb) {
+					flag = false;
+					safe.yield(function () {
+						cb();
+					});
+					a++;
+				},
+				function () {
+					if (flag)
+						throw new Error("Wrong behavior");
+
+					return a < 5;
+				}, done);
+		})
+	})
 })
