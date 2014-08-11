@@ -223,7 +223,104 @@ describe("safe",function () {
 				.done(done);
 		})
 	})
-	describe("each", function () {
+	describe("control flow", function () {
+		it("should execute step by step asynchronous functions in waterfall", function (done) {
+			var a = 0;
+			safe.waterfall([
+				function (cb) {
+					safe.yield(function () {
+						cb(null, 'test');
+					});
+					a++;
+				},
+				function (test, cb) {
+					if (test !== 'test')
+						return cb(new Error("Wrong behavior"));
+
+					safe.yield(function () {
+						cb(a === 2 ? null : new Error("Wrong behavior"), a);
+					});
+					a++;
+				},
+				function (a, cb) {
+					safe.yield(function () {
+						cb(a === 3 ? null : new Error("Wrong behavior"), "final")
+					});
+					a++;
+				}
+			], function (err, result) {
+				done((err || result !== "final") ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+		it("should execute step by step asynchronous functions in series", function (done) {
+			var a = 0;
+			safe.series([
+				function (cb) {
+					safe.yield(function () {
+						cb(null, 'first');
+					});
+					a++;
+				},
+				function (cb) {
+					safe.yield(function () {
+						cb(a === 2 ? null : new Error("Wrong behavior"), "middle");
+					});
+					a++;
+				},
+				function (cb) {
+					safe.yield(function () {
+						cb(a === 3 ? null : new Error("Wrong behavior"), "last");
+					});
+					a++;
+				}
+			], function (err, result) {
+				done((err || result[0] !== "first" || result[1] !== "middle" || result[2] !== "last") ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+		it("should execute asynchronous functions in parallel", function (done) {
+			safe.parallel({
+				"2": function (cb) {
+					safe.yield(function () {
+						cb(null, "last");
+					});
+				},
+				"1": function (cb) {
+					safe.yield(function () {
+						cb(null, "middle");
+					});
+				},
+				"0": function (cb) {
+					safe.yield(function () {
+						cb(null, 'first');
+					});
+				}
+			}, function (err, result) {
+				done((err || result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+		it("should automatically resolve dependencies execute asynchronous functions", function (done) {
+			safe.auto({
+				"2": ["0", "1", function (cb, result) {
+					safe.yield(function () {
+						cb((result["0"] !== "first" || result["1"] !== "middle") ? new Error("Wrong behavior") : null, "last");
+					});
+				}],
+				"1": ["0", function (cb, result) {
+					safe.yield(function () {
+						cb((result["0"] !== "first") ? new Error("Wrong behavior") : null, "middle");
+					});
+				}],
+				"0": function (cb) {
+					safe.yield(function () {
+						cb(null, 'first');
+					});
+				}
+			}, function (err, result) {
+				done((err || result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+	})
+	describe("for each", function () {
 		it("should execute asynchronous each (array)", function (done) {
 			var a = 0;
 			safe.each([1,2,3,4,5], function (i, cb) {
@@ -234,7 +331,7 @@ describe("safe",function () {
 			}, done);
 		})
 
-		it("should execute asynchronous series (array)", function (done) {
+		it("should execute asynchronous each series (array)", function (done) {
 			var a = 0;
 			safe.eachSeries([1,2,3,4,5], function (i, cb) {
 				safe.yield(function () {
@@ -242,6 +339,48 @@ describe("safe",function () {
 				});
 				a++;
 			}, done);
+		})
+	})
+	describe("whilst", function () {
+		it("should execute until a condition is false", function (done) {
+			var a = 0;
+			var flag = false;
+
+			safe.whilst(
+				function () {
+					flag = false;
+					return a < 5;
+				},
+				function (cb) {
+					if (flag)
+						throw new Error("Wrong behavior");
+
+					safe.yield(function () {
+						cb();
+					});
+					a++;
+				}, done);
+		})
+	})
+	describe("doWhilst", function () {
+		it("should execute until a condition is false (post check)", function (done) {
+			var a = 0;
+			var flag = true;
+
+			safe.doWhilst(
+				function (cb) {
+					flag = false;
+					safe.yield(function () {
+						cb();
+					});
+					a++;
+				},
+				function () {
+					if (flag)
+						throw new Error("Wrong behavior");
+
+					return a < 5;
+				}, done);
 		})
 	})
 })

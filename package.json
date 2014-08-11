@@ -5,18 +5,18 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/sergeyksv/safejs.git"
-  },  
+  },
   "contributors": [
-  ],  
+  ],
   "main": "./lib/safe",
   "engines": {
     "node": ">= v0.4.x"
-  },  
+  },
   "dependencies": {
   },
   "devDependencies": {
 	"mocha":""
   }, "scripts": {
     "test":"mocha -bR spec ./test/test.js"
-  }  
+  }
 }
