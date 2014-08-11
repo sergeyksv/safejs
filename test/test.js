@@ -341,7 +341,7 @@ describe("safe",function () {
 			}, done);
 		})
 	})
-	describe("whilst", function () {
+	describe("do-while", function () {
 		it("should execute until a condition is false", function (done) {
 			var a = 0;
 			var flag = false;
@@ -361,8 +361,6 @@ describe("safe",function () {
 					a++;
 				}, done);
 		})
-	})
-	describe("doWhilst", function () {
 		it("should execute until a condition is false (post check)", function (done) {
 			var a = 0;
 			var flag = true;
@@ -381,6 +379,26 @@ describe("safe",function () {
 
 					return a < 5;
 				}, done);
+		})
+	})
+	describe("reduce", function () {
+		it("should reduce array an asynchronous iterator", function (done) {
+			safe.reduce([1,2,3,4,5], 0, function (memo, item , cb) {
+				safe.yield(function () {
+					cb(null, memo + item);
+				});
+			}, function (err, result) {
+				done((err || result !== 15) ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+		it("should reduce array an asynchronous iterator in reverse order", function (done) {
+			safe.reduceRight([1,2,3,4,5], 15, function (memo, item , cb) {
+				safe.yield(function () {
+					cb(null, memo - item);
+				});
+			}, function (err, result) {
+				done((err || result !== 0) ? (err || new Error("Wrong behavior")) : null);
+			});
 		})
 	})
 })
