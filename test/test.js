@@ -319,6 +319,27 @@ describe("safe",function () {
 				done((err || result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? (err || new Error("Wrong behavior")) : null);
 			});
 		})
+		it("queue", function (done) {
+			var err;
+			var queue = safe.queue(function(task, cb){
+				task.cmd(function (err, res) {
+					err = (err || res != "test") ? (err || new Error("Wrong behavior")) : null;
+					cb();
+				});
+			}, 1);
+
+			queue.empty = function () {
+				done(err);
+			}
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						cb(null, "test");
+					});
+				}
+			});
+		})
 	})
 	describe("for each", function () {
 		it("should execute asynchronous each (array)", function (done) {
@@ -400,5 +421,19 @@ describe("safe",function () {
 				done((err || result !== 0) ? (err || new Error("Wrong behavior")) : null);
 			});
 		})
+	})
+	describe("apply", function () {
+		it("should execute function with some arguments applied", function (done) {
+			function foo (text, cb) {
+				safe.yield(function () {
+					cb(text === "test" ? null : new Error("Wrong behavior"));
+				})
+			}
+
+			safe.parallel([
+				safe.apply(foo, "test"),
+				safe.apply(foo, "test")
+			], done);
+		});
 	})
 })
