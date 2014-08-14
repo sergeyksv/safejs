@@ -320,16 +320,14 @@ describe("safe",function () {
 			});
 		})
 		it("queue", function (done) {
-			var err;
 			var queue = safe.queue(function(task, cb){
 				task.cmd(function (err, res) {
-					err = (err || res != "test") ? (err || new Error("Wrong behavior")) : null;
-					cb();
+					cb((err || res != "test") ? (err || new Error("Wrong behavior")) : null);
 				});
 			}, 1);
 
-			queue.empty = function () {
-				done(err);
+			queue.drain = function () {
+				done();
 			}
 
 			queue.push({
@@ -338,7 +336,7 @@ describe("safe",function () {
 						cb(null, "test");
 					});
 				}
-			});
+			}, function (err) { if (err) throw err; });
 		})
 	})
 	describe("for each", function () {
@@ -363,7 +361,7 @@ describe("safe",function () {
 		})
 	})
 	describe("do-while", function () {
-		it("should execute until a condition is false", function (done) {
+		it("should execute while a condition is true", function (done) {
 			var a = 0;
 			var flag = false;
 
@@ -374,15 +372,17 @@ describe("safe",function () {
 				},
 				function (cb) {
 					if (flag)
-						throw new Error("Wrong behavior");
+						cb(new Error("Wrong behavior"));
 
 					safe.yield(function () {
 						cb();
 					});
 					a++;
-				}, done);
+				}, function (err) {
+					done(err || (a === 5 ? null : new Error("Wrong behavior")));
+				});
 		})
-		it("should execute until a condition is false (post check)", function (done) {
+		it("should execute while a condition is true (post check)", function (done) {
 			var a = 0;
 			var flag = true;
 
@@ -396,10 +396,56 @@ describe("safe",function () {
 				},
 				function () {
 					if (flag)
-						throw new Error("Wrong behavior");
+						cb(new Error("Wrong behavior"));
 
 					return a < 5;
-				}, done);
+				}, function (err) {
+					done(err || (a === 5 ? null : new Error("Wrong behavior")));
+				});
+		})
+	})
+	describe("do-until", function () {
+		it("should execute until a condition is false", function (done) {
+			var a = 0;
+			var flag = false;
+
+			safe.until(
+				function () {
+					flag = false;
+					return a === 5;
+				},
+				function (cb) {
+					if (flag)
+						cb(new Error("Wrong behavior"));
+
+					safe.yield(function () {
+						cb();
+					});
+					a++;
+				}, function (err) {
+					done(err || (a === 5 ? null : new Error("Wrong behavior")));
+				});
+		})
+		it("should execute until a condition is false (post check)", function (done) {
+			var a = 0;
+			var flag = true;
+
+			safe.doUntil(
+				function (cb) {
+					flag = false;
+					safe.yield(function () {
+						cb();
+					});
+					a++;
+				},
+				function () {
+					if (flag)
+						cb(new Error("Wrong behavior"));
+
+					return a === 5;
+				}, function (err) {
+					done(err || (a === 5 ? null : new Error("Wrong behavior")));
+				});
 		})
 	})
 	describe("reduce", function () {
