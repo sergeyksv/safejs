@@ -301,9 +301,7 @@ describe("safe",function () {
 		it("should automatically resolve dependencies execute asynchronous functions", function (done) {
 			safe.auto({
 				"2": ["0", "1", function (cb, result) {
-					safe.yield(function () {
-						cb((result["0"] !== "first" || result["1"] !== "middle") ? new Error("Wrong behavior") : null, "last");
-					});
+					cb((result["0"] !== "first" || result["1"] !== "middle") ? new Error("Wrong behavior") : null, "last");
 				}],
 				"1": ["0", function (cb, result) {
 					safe.yield(function () {
@@ -341,13 +339,15 @@ describe("safe",function () {
 	})
 	describe("for each", function () {
 		it("should execute asynchronous each (array)", function (done) {
-			var a = 0;
+			var a = 5;
 			safe.each([1,2,3,4,5], function (i, cb) {
 				safe.yield(function () {
-					cb(i === a ? null : new Error("Wrong behavior"));
+					a--;
+					cb();
 				});
-				a++;
-			}, done);
+			}, function (err) {
+				done(err || (a === 0 ? null : new Error("Wrong behavior")));
+			});
 		})
 
 		it("should execute asynchronous each series (array)", function (done) {
