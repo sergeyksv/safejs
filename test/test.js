@@ -468,6 +468,66 @@ describe("safe",function () {
 			});
 		})
 	})
+	describe("map", function () {
+		it("should map array an asynchronous iterator", function (done) {
+			safe.map([1,2,3], function (item, cb) {
+				safe.yield(function () {
+					cb(null, item*2);
+				});
+			}, function (err, result) {
+				done((err || result[0] !== 2 || result[1] !== 4 || result[2] !== 6) ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+		it("should map array an asynchronous iterator by series", function (done) {
+			safe.mapSeries([1,2,3], function (item, cb) {
+				if (item % 2)
+					safe.yield(function () {
+						cb(null, item);
+					});
+				else
+					cb(null, item*2);
+			}, function (err, result) {
+				done((err || result[0] !== 1 || result[1] !== 4 || result[2] !== 3) ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+	})
+	describe("sortBy", function () {
+		it("should sort array an asynchronous iterator results", function (done) {
+			safe.sortBy([2,3,1], function (item, cb) {
+				if (item % 2)
+					safe.yield(function () {
+						cb(null, item*2);
+					});
+				else
+					cb(null, item*2);
+			}, function (err, result) {
+				done((err || result[0] !== 1 || result[1] !== 2 || result[2] !== 3 || result.length !== 3) ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+	})
+	describe("concat", function () {
+		it("should concat arrays an asynchronous iterator results", function (done) {
+			safe.concat([2,3,1], function (item, cb) {
+				safe.yield(function () {
+					cb(null, [item*2]);
+				});
+			}, function (err, result) {
+				done((err || result[0] !== 4 || result[1] !== 6 || result[2] !== 2 || result.length !== 3) ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+		it("should concat arrays an series asynchronous iterator results", function (done) {
+			safe.concatSeries([2,3,1], function (item, cb) {
+				if (item % 2)
+					safe.yield(function () {
+						cb(null, [item*2]);
+					});
+				else
+					cb(null, [item*2]);
+			}, function (err, result) {
+				done((err || result[0] !== 4 || result[1] !== 6 || result[2] !== 2 || result.length !== 3) ? (err || new Error("Wrong behavior")) : null);
+			});
+		})
+	})
 	describe("apply", function () {
 		it("should execute function with some arguments applied", function (done) {
 			function foo (text, cb) {
