@@ -228,24 +228,27 @@ describe("safe",function () {
 			var a = 0;
 			safe.waterfall([
 				function (cb) {
-					safe.yield(function () {
-						cb(null, 'test');
-					});
+					setTimeout(function () {
+						cb(null, "test");
+					}, Math.random*10);
+
 					a++;
 				},
 				function (test, cb) {
 					if (test !== 'test')
 						return cb(new Error("Wrong behavior"));
 
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(a === 2 ? null : new Error("Wrong behavior"), a);
-					});
+					}, Math.random*10);
+
 					a++;
 				},
 				function (a, cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"), "final")
-					});
+					}, Math.random*10);
+
 					a++;
 				}
 			], function (err, result) {
@@ -256,21 +259,24 @@ describe("safe",function () {
 			var a = 0;
 			safe.series([
 				function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(null, 'first');
-					});
+					}, Math.random*10);
+
 					a++;
 				},
 				function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(a === 2 ? null : new Error("Wrong behavior"), "middle");
-					});
+					}, Math.random*10);
+
 					a++;
 				},
 				function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"), "last");
-					});
+					}, Math.random*10);
+
 					a++;
 				}
 			], function (err, result) {
@@ -280,19 +286,19 @@ describe("safe",function () {
 		it("should execute asynchronous functions in parallel", function (done) {
 			safe.parallel({
 				"2": function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(null, "last");
-					});
+					}, Math.random*10);
 				},
 				"1": function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(null, "middle");
-					});
+					}, Math.random*10);
 				},
 				"0": function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(null, 'first');
-					});
+					}, Math.random*10);
 				}
 			}, function (err, result) {
 				done((err || result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? (err || new Error("Wrong behavior")) : null);
@@ -300,21 +306,48 @@ describe("safe",function () {
 		})
 		it("should automatically resolve dependencies execute asynchronous functions", function (done) {
 			safe.auto({
-				"2": ["0", "1", function (cb, result) {
-					cb((result["0"] !== "first" || result["1"] !== "middle") ? new Error("Wrong behavior") : null, "last");
+				"4": ["0", "2", function (cb, result) {
+					if (result["0"] !== "Tinker" || result["2"] !== "Soldier")
+						return cb(new Error("Wrong behavior"));
+
+					setTimeout(function () {
+						cb(null, "Spy");
+					}, Math.random*10);
+				}],
+				"3": ["1", "2", "4", function (cb, result) {
+					if (result["1"] !== "Tailor" || result["4"] !== "Spy" || result["2"] !== "Soldier")
+						return cb(new Error("Wrong behavior"));
+
+					setTimeout(function () {
+						cb(null, "Done");
+					}, Math.random*10);
+				}],
+				"2": ["0", function (cb, result) {
+					if (result["0"] !== "Tinker")
+						return cb(new Error("Wrong behavior"));
+
+					setTimeout(function () {
+						cb(null, "Soldier");
+					}, Math.random*10);
 				}],
 				"1": ["0", function (cb, result) {
-					safe.yield(function () {
-						cb((result["0"] !== "first") ? new Error("Wrong behavior") : null, "middle");
-					});
+					if (result["0"] !== "Tinker")
+						return cb(new Error("Wrong behavior"));
+
+					setTimeout(function () {
+						cb(null, "Tailor");
+					}, Math.random*10);
 				}],
 				"0": function (cb) {
 					safe.yield(function () {
-						cb(null, 'first');
+						cb(null, "Tinker");
 					});
 				}
 			}, function (err, result) {
-				done((err || result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? (err || new Error("Wrong behavior")) : null);
+				if (result["0"] !== "Tinker" || result["1"] !== "Tailor" || result["2"] !== "Soldier" || result["4"] !== "Spy" || result["3"] !== "Done")
+					done(new Error("Wrong behavior"));
+
+				done(err);
 			});
 		})
 		it("queue", function (done) {
@@ -341,10 +374,10 @@ describe("safe",function () {
 		it("should execute asynchronous each (array)", function (done) {
 			var a = 5;
 			safe.each([1,2,3,4,5], function (i, cb) {
-				safe.yield(function () {
+				setTimeout(function () {
 					a--;
 					cb();
-				});
+				}, Math.random*10);
 			}, function (err) {
 				done(err || (a === 0 ? null : new Error("Wrong behavior")));
 			});
@@ -353,9 +386,10 @@ describe("safe",function () {
 		it("should execute asynchronous each series (array)", function (done) {
 			var a = 0;
 			safe.eachSeries([1,2,3,4,5], function (i, cb) {
-				safe.yield(function () {
+				setTimeout(function () {
 					cb(i === a ? null : new Error("Wrong behavior"));
-				});
+				}, Math.random*10);
+
 				a++;
 			}, done);
 		})
@@ -374,9 +408,10 @@ describe("safe",function () {
 					if (flag)
 						cb(new Error("Wrong behavior"));
 
-					safe.yield(function () {
+					setTimeout(function () {
 						cb();
-					});
+					}, Math.random*10);
+
 					a++;
 				}, function (err) {
 					done(err || (a === 5 ? null : new Error("Wrong behavior")));
@@ -389,14 +424,15 @@ describe("safe",function () {
 			safe.doWhilst(
 				function (cb) {
 					flag = false;
-					safe.yield(function () {
+					setTimeout(function () {
 						cb();
-					});
+					}, Math.random*10);
+
 					a++;
 				},
 				function () {
 					if (flag)
-						cb(new Error("Wrong behavior"));
+						throw new Error("Wrong behavior");
 
 					return a < 5;
 				}, function (err) {
@@ -418,9 +454,10 @@ describe("safe",function () {
 					if (flag)
 						cb(new Error("Wrong behavior"));
 
-					safe.yield(function () {
+					setTimeout(function () {
 						cb();
-					});
+					}, Math.random*10);
+
 					a++;
 				}, function (err) {
 					done(err || (a === 5 ? null : new Error("Wrong behavior")));
@@ -433,14 +470,15 @@ describe("safe",function () {
 			safe.doUntil(
 				function (cb) {
 					flag = false;
-					safe.yield(function () {
+					setTimeout(function () {
 						cb();
-					});
+					}, Math.random*10);
+
 					a++;
 				},
 				function () {
 					if (flag)
-						cb(new Error("Wrong behavior"));
+						throw new Error("Wrong behavior");
 
 					return a === 5;
 				}, function (err) {
@@ -451,18 +489,18 @@ describe("safe",function () {
 	describe("reduce", function () {
 		it("should reduce array an asynchronous iterator", function (done) {
 			safe.reduce([1,2,3,4,5], 0, function (memo, item , cb) {
-				safe.yield(function () {
+				setTimeout(function () {
 					cb(null, memo + item);
-				});
+				}, Math.random*10);
 			}, function (err, result) {
 				done((err || result !== 15) ? (err || new Error("Wrong behavior")) : null);
 			});
 		})
 		it("should reduce array an asynchronous iterator in reverse order", function (done) {
 			safe.reduceRight([1,2,3,4,5], 15, function (memo, item , cb) {
-				safe.yield(function () {
+				setTimeout(function () {
 					cb(null, memo - item);
-				});
+				}, Math.random*10);
 			}, function (err, result) {
 				done((err || result !== 0) ? (err || new Error("Wrong behavior")) : null);
 			});
@@ -471,9 +509,9 @@ describe("safe",function () {
 	describe("apply", function () {
 		it("should execute function with some arguments applied", function (done) {
 			function foo (text, cb) {
-				safe.yield(function () {
+				setTimeout(function () {
 					cb(text === "test" ? null : new Error("Wrong behavior"));
-				})
+				}, Math.random*10);
 			}
 
 			safe.parallel([
