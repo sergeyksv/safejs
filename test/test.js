@@ -394,6 +394,53 @@ describe("safe",function () {
 			}, done);
 		})
 	})
+	describe("map", function () {
+		it("should execute asynchronous map (array)", function (done) {
+			safe.map([1,2,3,4,5], function (i, cb) {
+				setTimeout(function () {
+					cb(null, i*2);
+				}, Math.random*10);
+			}, function (err, res) {
+				done(err || (res[0] === 2 && res[1] === 4 && res[2] === 6 && res[3] === 8 && res[4] === 10 ? null : new Error("Wrong behavior")));
+			});
+		})
+
+		it("should execute asynchronous map series (array)", function (done) {
+			var execute = 0;
+
+			safe.mapSeries([1,2,3,4,5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, i*2);
+				}, Math.random*10);
+			}, function (err, res) {
+				done(err || (res[0] === 2 && res[1] === 4 && res[2] === 6 && res[3] === 8 && res[4] === 10 ? null : new Error("Wrong behavior")));
+			});
+		})
+	})
+	describe("retry", function () {
+		it("should few times retry to execute function", function (done) {
+			var i = 0;
+
+			safe.retry(function (cb) {
+				setTimeout(function () {
+					i++;
+
+					if (i !== 5) {
+						cb(new Error("need more retry"));
+					} else
+						cb(null, "done");
+
+				}, Math.random*10);
+			}, function (err, result) {
+				done(err || (result === "done" ? null : new Error("Wrong behavior")));
+			});
+		})
+	})
 	describe("do-while", function () {
 		it("should execute while a condition is true", function (done) {
 			var a = 0;
