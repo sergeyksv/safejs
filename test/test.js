@@ -1,6 +1,10 @@
 var assert = require('assert');
 var safe = require('../lib/safe.js');
 
+var randomTime = function() {
+	 return 4 + Math.round(2 * Math.random());
+}
+
 describe("safe",function () {
 	describe("sure", function () {
 		it("should rise up exceptions", function () {
@@ -223,6 +227,34 @@ describe("safe",function () {
 				.done(done);
 		})
 	})
+	describe("for each", function () {
+		it("should execute asynchronous each (array)", function (done) {
+			var a = 1000;
+			var arr = new Array(a);
+			for (var i = 0; i < arr.length; i++)
+				arr[i] = i;
+
+			safe.each(arr, function (i, cb) {
+				setTimeout(function () {
+					a--;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				done(a === 0 ? null : new Error("Wrong behavior"));
+			}));
+		})
+
+		it("should execute asynchronous each series (array)", function (done) {
+			var a = 0;
+			safe.eachSeries([1,2,3,4,5], function (i, cb) {
+				setTimeout(function () {
+					cb(i === a ? null : new Error("Wrong behavior"));
+				}, randomTime());
+
+				a++;
+			}, done);
+		})
+	})
 	describe("control flow", function () {
 		it("should execute step by step asynchronous functions in waterfall", function (done) {
 			var a = 0;
@@ -230,7 +262,7 @@ describe("safe",function () {
 				function (cb) {
 					setTimeout(function () {
 						cb(null, "test");
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				},
@@ -240,20 +272,20 @@ describe("safe",function () {
 
 					setTimeout(function () {
 						cb(a === 2 ? null : new Error("Wrong behavior"), a);
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				},
 				function (a, cb) {
 					setTimeout(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"), "final")
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				}
-			], function (err, result) {
-				done((err || result !== "final") ? (err || new Error("Wrong behavior")) : null);
-			});
+			], safe.sure(done, function (result) {
+				done(result !== "final" ? new Error("Wrong behavior") : null);
+			}));
 		})
 		it("should execute step by step asynchronous functions in series", function (done) {
 			var a = 0;
@@ -261,48 +293,48 @@ describe("safe",function () {
 				function (cb) {
 					setTimeout(function () {
 						cb(null, 'first');
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				},
 				function (cb) {
 					setTimeout(function () {
 						cb(a === 2 ? null : new Error("Wrong behavior"), "middle");
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				},
 				function (cb) {
 					setTimeout(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"), "last");
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				}
-			], function (err, result) {
-				done((err || result[0] !== "first" || result[1] !== "middle" || result[2] !== "last") ? (err || new Error("Wrong behavior")) : null);
-			});
+			], safe.sure(done, function (result) {
+				done((result[0] !== "first" || result[1] !== "middle" || result[2] !== "last") ? new Error("Wrong behavior") : null);
+			}));
 		})
 		it("should execute asynchronous functions in parallel", function (done) {
 			safe.parallel({
 				"2": function (cb) {
 					setTimeout(function () {
 						cb(null, "last");
-					}, Math.random*10);
+					}, randomTime());
 				},
 				"1": function (cb) {
 					setTimeout(function () {
 						cb(null, "middle");
-					}, Math.random*10);
+					}, randomTime());
 				},
 				"0": function (cb) {
 					setTimeout(function () {
 						cb(null, 'first');
-					}, Math.random*10);
+					}, randomTime());
 				}
-			}, function (err, result) {
-				done((err || result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? (err || new Error("Wrong behavior")) : null);
-			});
+			}, safe.sure(done, function (result) {
+				done((result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? new Error("Wrong behavior") : null);
+			}));
 		})
 		it("should automatically resolve dependencies execute asynchronous functions", function (done) {
 			safe.auto({
@@ -312,7 +344,7 @@ describe("safe",function () {
 
 					setTimeout(function () {
 						cb(null, "Spy");
-					}, Math.random*10);
+					}, randomTime());
 				}],
 				"3": ["1", "2", "4", function (cb, result) {
 					if (result["1"] !== "Tailor" || result["4"] !== "Spy" || result["2"] !== "Soldier")
@@ -320,7 +352,7 @@ describe("safe",function () {
 
 					setTimeout(function () {
 						cb(null, "Done");
-					}, Math.random*10);
+					}, randomTime());
 				}],
 				"2": ["0", function (cb, result) {
 					if (result["0"] !== "Tinker")
@@ -328,7 +360,7 @@ describe("safe",function () {
 
 					setTimeout(function () {
 						cb(null, "Soldier");
-					}, Math.random*10);
+					}, randomTime());
 				}],
 				"1": ["0", function (cb, result) {
 					if (result["0"] !== "Tinker")
@@ -336,19 +368,19 @@ describe("safe",function () {
 
 					setTimeout(function () {
 						cb(null, "Tailor");
-					}, Math.random*10);
+					}, randomTime());
 				}],
 				"0": function (cb) {
 					safe.yield(function () {
 						cb(null, "Tinker");
 					});
 				}
-			}, function (err, result) {
+			}, safe.sure(done, function (result) {
 				if (result["0"] !== "Tinker" || result["1"] !== "Tailor" || result["2"] !== "Soldier" || result["4"] !== "Spy" || result["3"] !== "Done")
-					done(new Error("Wrong behavior"));
+					return done(new Error("Wrong behavior"));
 
-				done(err);
-			});
+				done();
+			}));
 		})
 		it("queue", function (done) {
 			var queue = safe.queue(function(task, cb){
@@ -370,39 +402,15 @@ describe("safe",function () {
 			}, function (err) { if (err) throw err; });
 		})
 	})
-	describe("for each", function () {
-		it("should execute asynchronous each (array)", function (done) {
-			var a = 5;
-			safe.each([1,2,3,4,5], function (i, cb) {
-				setTimeout(function () {
-					a--;
-					cb();
-				}, Math.random*10);
-			}, function (err) {
-				done(err || (a === 0 ? null : new Error("Wrong behavior")));
-			});
-		})
-
-		it("should execute asynchronous each series (array)", function (done) {
-			var a = 0;
-			safe.eachSeries([1,2,3,4,5], function (i, cb) {
-				setTimeout(function () {
-					cb(i === a ? null : new Error("Wrong behavior"));
-				}, Math.random*10);
-
-				a++;
-			}, done);
-		})
-	})
 	describe("map", function () {
 		it("should execute asynchronous map (array)", function (done) {
 			safe.map([1,2,3,4,5], function (i, cb) {
 				setTimeout(function () {
 					cb(null, i*2);
-				}, Math.random*10);
-			}, function (err, res) {
-				done(err || (res[0] === 2 && res[1] === 4 && res[2] === 6 && res[3] === 8 && res[4] === 10 ? null : new Error("Wrong behavior")));
-			});
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done((res[0] === 2 && res[1] === 4 && res[2] === 6 && res[3] === 8 && res[4] === 10) ? null : new Error("Wrong behavior"));
+			}));
 		})
 
 		it("should execute asynchronous map series (array)", function (done) {
@@ -416,10 +424,10 @@ describe("safe",function () {
 				setTimeout(function () {
 					execute = 0;
 					cb(null, i*2);
-				}, Math.random*10);
-			}, function (err, res) {
-				done(err || (res[0] === 2 && res[1] === 4 && res[2] === 6 && res[3] === 8 && res[4] === 10 ? null : new Error("Wrong behavior")));
-			});
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done((res[0] === 2 && res[1] === 4 && res[2] === 6 && res[3] === 8 && res[4] === 10) ? null : new Error("Wrong behavior"));
+			}));
 		})
 	})
 	describe("retry", function () {
@@ -435,10 +443,10 @@ describe("safe",function () {
 					} else
 						cb(null, "done");
 
-				}, Math.random*10);
-			}, function (err, result) {
-				done(err || (result === "done" ? null : new Error("Wrong behavior")));
-			});
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				done(result === "done" ? null : new Error("Wrong behavior"));
+			}));
 		})
 	})
 	describe("do-while", function () {
@@ -457,12 +465,12 @@ describe("safe",function () {
 
 					setTimeout(function () {
 						cb();
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
-				}, function (err) {
-					done(err || (a === 5 ? null : new Error("Wrong behavior")));
-				});
+				}, safe.sure(done, function () {
+					done(a === 5 ? null : new Error("Wrong behavior"));
+				}));
 		})
 		it("should execute while a condition is true (post check)", function (done) {
 			var a = 0;
@@ -473,7 +481,7 @@ describe("safe",function () {
 					flag = false;
 					setTimeout(function () {
 						cb();
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				},
@@ -482,9 +490,9 @@ describe("safe",function () {
 						throw new Error("Wrong behavior");
 
 					return a < 5;
-				}, function (err) {
-					done(err || (a === 5 ? null : new Error("Wrong behavior")));
-				});
+				}, safe.sure(done, function () {
+					done(a === 5 ? null : new Error("Wrong behavior"));
+				}));
 		})
 	})
 	describe("do-until", function () {
@@ -503,12 +511,12 @@ describe("safe",function () {
 
 					setTimeout(function () {
 						cb();
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
-				}, function (err) {
-					done(err || (a === 5 ? null : new Error("Wrong behavior")));
-				});
+				}, safe.sure(done, function () {
+					done(a === 5 ? null : new Error("Wrong behavior"));
+				}));
 		})
 		it("should execute until a condition is false (post check)", function (done) {
 			var a = 0;
@@ -519,7 +527,7 @@ describe("safe",function () {
 					flag = false;
 					setTimeout(function () {
 						cb();
-					}, Math.random*10);
+					}, randomTime());
 
 					a++;
 				},
@@ -528,9 +536,9 @@ describe("safe",function () {
 						throw new Error("Wrong behavior");
 
 					return a === 5;
-				}, function (err) {
-					done(err || (a === 5 ? null : new Error("Wrong behavior")));
-				});
+				}, safe.sure(done, function () {
+					done(a === 5 ? null : new Error("Wrong behavior"));
+				}));
 		})
 	})
 	describe("reduce", function () {
@@ -538,19 +546,19 @@ describe("safe",function () {
 			safe.reduce([1,2,3,4,5], 0, function (memo, item , cb) {
 				setTimeout(function () {
 					cb(null, memo + item);
-				}, Math.random*10);
-			}, function (err, result) {
-				done((err || result !== 15) ? (err || new Error("Wrong behavior")) : null);
-			});
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				done(result !== 15 ? new Error("Wrong behavior") : null);
+			}));
 		})
 		it("should reduce array an asynchronous iterator in reverse order", function (done) {
 			safe.reduceRight([1,2,3,4,5], 15, function (memo, item , cb) {
 				setTimeout(function () {
 					cb(null, memo - item);
-				}, Math.random*10);
-			}, function (err, result) {
-				done((err || result !== 0) ? (err || new Error("Wrong behavior")) : null);
-			});
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				done(result !== 0 ? new Error("Wrong behavior") : null);
+			}));
 		})
 	})
 	describe("apply", function () {
@@ -558,7 +566,7 @@ describe("safe",function () {
 			function foo (text, cb) {
 				setTimeout(function () {
 					cb(text === "test" ? null : new Error("Wrong behavior"));
-				}, Math.random*10);
+				}, randomTime());
 			}
 
 			safe.parallel([
