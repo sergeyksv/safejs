@@ -1,22 +1,30 @@
 {
-  "author": "Sergey Korotkov <sergeyksv@gmail.com>",
-  "name": "safe",
-  "version": "0.2.1",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/sergeyksv/safejs.git"
-  },
-  "contributors": [
-  ],
-  "main": "./lib/safe",
-  "engines": {
-    "node": ">= v0.4.x"
-  },
-  "dependencies": {
-  },
-  "devDependencies": {
-	"mocha":""
-  }, "scripts": {
-    "test":"mocha -bR spec ./test/test.js"
-  }
+	"author": "Sergey Korotkov <sergeyksv@gmail.com>",
+	"name": "safe",
+	"version": "0.2.1",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/sergeyksv/safejs.git"
+	},
+	"contributors": [
+		{
+			"name": "Sergey Korotkov",
+			"email": "sergeyksv@gmail.com"
+		},
+		{
+			"name": "Ilya Shatokhin",
+			"email": "eXamp1e@mail.ru"
+		}
+	],
+	"main": "./lib/safe",
+	"engines": {
+		"node": ">= v0.4.x"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"mocha": ""
+	},
+	"scripts": {
+		"test": "mocha -bR spec ./test/test.js"
+	}
 }
