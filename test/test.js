@@ -244,9 +244,36 @@ describe("safe",function () {
 			}));
 		})
 
+		it("should execute asynchronous each (object)", function (done) {
+			var a = 1000;
+			var obj = {};
+			for (var i = 0; i < a; i++)
+				obj[i] = i;
+
+			safe.forEachOf(obj, function (i, cb) {
+				setTimeout(function () {
+					a--;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				done(a === 0 ? null : new Error("Wrong behavior"));
+			}));
+		})
+
 		it("should execute asynchronous each series (array)", function (done) {
 			var a = 0;
 			safe.eachSeries([1,2,3,4,5], function (i, cb) {
+				setTimeout(function () {
+					cb(i === a ? null : new Error("Wrong behavior"));
+				}, randomTime());
+
+				a++;
+			}, done);
+		})
+
+		it("should execute asynchronous each series (object)", function (done) {
+			var a = 0;
+			safe.forEachOfSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
 				setTimeout(function () {
 					cb(i === a ? null : new Error("Wrong behavior"));
 				}, randomTime());
@@ -404,7 +431,7 @@ describe("safe",function () {
 	})
 	describe("map", function () {
 		it("should execute asynchronous map (array)", function (done) {
-			safe.map([1,2,3,4,5], function (i, cb) {
+			safe.map({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
 				setTimeout(function () {
 					cb(null, i*2);
 				}, randomTime());
@@ -416,7 +443,7 @@ describe("safe",function () {
 		it("should execute asynchronous map series (array)", function (done) {
 			var execute = 0;
 
-			safe.mapSeries([1,2,3,4,5], function (i, cb) {
+			safe.mapSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
