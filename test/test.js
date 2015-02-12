@@ -374,7 +374,7 @@ describe("safe",function () {
 					}, randomTime());
 				}],
 				"3": ["1", "2", "4", function (cb, result) {
-					if (result["1"] !== "Tailor" || result["4"] !== "Spy" || result["2"] !== "Soldier")
+					if (result["1"] !== "Tailor" || result["2"] !== "Soldier" || result["4"] !== "Spy")
 						return cb(new Error("Wrong behavior"));
 
 					setTimeout(function () {
@@ -389,8 +389,8 @@ describe("safe",function () {
 						cb(null, "Soldier");
 					}, randomTime());
 				}],
-				"1": ["0", function (cb, result) {
-					if (result["0"] !== "Tinker")
+				"1": ["0", "4", function (cb, result) {
+					if (result["0"] !== "Tinker" || result["4"] !== "Spy")
 						return cb(new Error("Wrong behavior"));
 
 					setTimeout(function () {
