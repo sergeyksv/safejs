@@ -416,17 +416,112 @@ describe("safe",function () {
 				});
 			}, 1);
 
+			var arr = [];
+
 			queue.drain = function () {
+				if (arr.join(",") !== "1,2,3,4")
+					return done(new Error("Wrong behavior"));
 				done();
 			}
 
 			queue.push({
 				cmd: function(cb){
 					safe.yield(function () {
+						arr.push(1);
 						cb(null, "test");
 					});
 				}
 			}, function (err) { if (err) throw err; });
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						arr.push(2);
+						cb(null, "test");
+					});
+				}
+			}, function (err) { if (err) throw err; });
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						arr.push(3);
+						cb(null, "test");
+					});
+				}
+			}, function (err) { if (err) throw err; });
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						arr.push(4);
+						cb(null, "test");
+					});
+				}
+			}, function (err) { if (err) throw err; });
+
+			if (queue.length != 4)
+				return done(new Error("Wrong behavior"));
+
+			queue.resume();
+		})
+		it("priorityQueue", function (done) {
+			var queue = safe.priorityQueue(function(task, cb){
+				task.cmd(function (err, res) {
+					cb((err || res != "test") ? (err || new Error("Wrong behavior")) : null);
+				});
+			}, 1);
+
+			queue.pause();
+
+			var arr = [];
+
+			queue.drain = function () {
+				if (arr.join(",") !== "4,2,1,3")
+					return done(new Error("Wrong behavior"));
+				done();
+			}
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						arr.push(1);
+						cb(null, "test");
+					});
+				}
+			}, 2, function (err) { if (err) throw err; });
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						arr.push(2);
+						cb(null, "test");
+					});
+				}
+			}, 3, function (err) { if (err) throw err; });
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						arr.push(3);
+						cb(null, "test");
+					});
+				}
+			}, 1, function (err) { if (err) throw err; });
+
+			queue.push({
+				cmd: function(cb){
+					safe.yield(function () {
+						arr.push(4);
+						cb(null, "test");
+					});
+				}
+			}, 4, function (err) { if (err) throw err; });
+
+			if (queue.length != 4)
+				return done(new Error("Wrong behavior"));
+
+			queue.resume();
 		})
 	})
 	describe("map", function () {
