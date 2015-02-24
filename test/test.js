@@ -416,51 +416,57 @@ describe("safe",function () {
 				});
 			}, 1);
 
-			var arr = [];
+			var arr = [], sature = 0;
+
+			queue.saturated = function () {
+				if (queue.length() < 2)
+					throw new Error("Wrong behavior");
+				sature = 1;
+			}
 
 			queue.drain = function () {
-				if (arr.join(",") !== "1,2,3,4")
+				if (arr.join(",") !== "1,2,3,4" || !sature)
 					return done(new Error("Wrong behavior"));
 				done();
 			}
 
 			queue.push({
 				cmd: function(cb){
-					safe.yield(function () {
+					setTimeout(function () {
 						arr.push(1);
 						cb(null, "test");
-					});
+					}, randomTime());
 				}
 			}, function (err) { if (err) throw err; });
 
 			queue.push({
 				cmd: function(cb){
-					safe.yield(function () {
+					setTimeout(function () {
 						arr.push(2);
 						cb(null, "test");
-					});
+					}, randomTime());
 				}
 			}, function (err) { if (err) throw err; });
 
 			queue.push({
 				cmd: function(cb){
-					safe.yield(function () {
+					setTimeout(function () {
 						arr.push(3);
 						cb(null, "test");
-					});
+					}, randomTime());
 				}
 			}, function (err) { if (err) throw err; });
 
 			queue.push({
 				cmd: function(cb){
-					safe.yield(function () {
+					safe.back(function () {
 						arr.push(4);
 						cb(null, "test");
 					});
 				}
 			}, function (err) { if (err) throw err; });
 
-			if (queue.length != 4)
+			if (queue.length() != 4)
 				return done(new Error("Wrong behavior"));
 
 			queue.resume();
@@ -518,7 +524,7 @@ describe("safe",function () {
 				}
 			}, 4, function (err) { if (err) throw err; });
 
-			if (queue.length != 4)
+			if (queue.length() != 4)
 				return done(new Error("Wrong behavior"));
 
 			queue.resume();
