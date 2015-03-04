@@ -531,7 +531,7 @@ describe("safe",function () {
 		})
 	})
 	describe("map", function () {
-		it("should execute asynchronous map (array)", function (done) {
+		it("should execute asynchronous map", function (done) {
 			safe.map({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
 				setTimeout(function () {
 					cb(null, i*2);
@@ -541,7 +541,7 @@ describe("safe",function () {
 			}));
 		})
 
-		it("should execute asynchronous map series (array)", function (done) {
+		it("should execute asynchronous map series", function (done) {
 			var execute = 0;
 
 			safe.mapSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
@@ -555,6 +555,62 @@ describe("safe",function () {
 				}, randomTime());
 			}, safe.sure(done, function (res) {
 				done((res[0] === 2 && res[1] === 4 && res[2] === 6 && res[3] === 8 && res[4] === 10) ? null : new Error("Wrong behavior"));
+			}));
+		})
+	})
+	describe("filter", function () {
+		it("should execute asynchronous filter (array)", function (done) {
+			safe.filter([1,2,3,4,5], function (i, cb) {
+				setTimeout(function () {
+					cb(null, i%2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done(res.join(",") === "1,3,5" ?  null : new Error("Wrong behavior"));
+			}));
+		})
+
+		it("should execute asynchronous filter series (array)", function (done) {
+			var execute = 0;
+
+			safe.filterSeries([1,2,3,4,5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, i%2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done(res.join(",") === "1,3,5" ?  null : new Error("Wrong behavior"));
+			}));
+		})
+	})
+	describe("reject", function () {
+		it("should execute asynchronous reject (array)", function (done) {
+			safe.reject([1,2,3,4,5], function (i, cb) {
+				setTimeout(function () {
+					cb(null, i%2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done(res.join(",") === "2,4" ?  null : new Error("Wrong behavior"));
+			}));
+		})
+
+		it("should execute asynchronous reject series (array)", function (done) {
+			var execute = 0;
+
+			safe.rejectSeries([1,2,3,4,5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, i%2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done(res.join(",") === "2,4" ?  null : new Error("Wrong behavior"));
 			}));
 		})
 	})
