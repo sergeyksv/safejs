@@ -160,28 +160,28 @@ describe("safe",function () {
 		}
 		it("should rise up exceptions", function () {
 			safe.async(obj,"doBad")(function (err,v) {
-				assert(err!=null)
-			})
+				assert(err != null);
+			});
 		})
 		it("should bind to object function and rise up callback value", function () {
 			safe.async(obj,"doStuff",2,3)(function (err,v) {
 				assert(err==null);
-				assert.equal(v,5)
-			})
+				assert.equal(v, 5);
+			});
 		})
 	})
 	describe("back", function () {
 		it("should return value in next iteration", function (done) {
 			var a = 0;
-			safe.back(function (err) { done((err!=null && a==1)?null:new Error("Wrong behavior")) }, new Error())
-			a++
+			safe.back(function (err) { done((err!=null && a==1)?null:new Error("Wrong behavior")) }, new Error());
+			a += 1;
 		})
 	})
 	describe("yield", function () {
 		it("should execute function in next iteration", function (done) {
 			var a = 0;
-			safe.yield(function () { done(a==1?null:new Error("Wrong behavior")) })
-			a++
+			safe.yield(function () { done(a==1?null:new Error("Wrong behavior")) });
+			a += 1;
 		})
 	})
 	describe("inherits", function () {
@@ -207,7 +207,7 @@ describe("safe",function () {
 					safe.yield(function () {
 						cb(null, 'test');
 					});
-					a++;
+					a += 1;
 				})
 				.then(function (test, cb) {
 					if (test !== 'test')
@@ -216,13 +216,13 @@ describe("safe",function () {
 					safe.yield(function () {
 						cb(a === 2 ? null : new Error("Wrong behavior"), a);
 					});
-					a++;
+					a += 1;
 				})
 				.then(function (a, cb) {
 					safe.yield(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"))
 					});
-					a++;
+					a += 1;
 				})
 				.done(done);
 		})
@@ -231,7 +231,7 @@ describe("safe",function () {
 		it("should execute asynchronous each (array)", function (done) {
 			var a = 1000;
 			var arr = new Array(a);
-			for (var i = 0; i < arr.length; i++)
+			for (var i = 0; i < arr.length; i += 1)
 				arr[i] = i;
 
 			safe.each(arr, function (i, cb) {
@@ -247,7 +247,7 @@ describe("safe",function () {
 		it("should execute asynchronous each (object)", function (done) {
 			var a = 1000;
 			var obj = {};
-			for (var i = 0; i < a; i++)
+			for (var i = 0; i < a; i += 1)
 				obj[i] = i;
 
 			safe.forEachOf(obj, function (i, cb) {
@@ -267,7 +267,7 @@ describe("safe",function () {
 					cb(i === a ? null : new Error("Wrong behavior"));
 				}, randomTime());
 
-				a++;
+				a += 1;
 			}, done);
 		})
 
@@ -278,7 +278,7 @@ describe("safe",function () {
 					cb(i === a ? null : new Error("Wrong behavior"));
 				}, randomTime());
 
-				a++;
+				a += 1;
 			}, done);
 		})
 	})
@@ -291,7 +291,7 @@ describe("safe",function () {
 						cb(null, "test");
 					}, randomTime());
 
-					a++;
+					a += 1;
 				},
 				function (test, cb) {
 					if (test !== 'test')
@@ -301,14 +301,14 @@ describe("safe",function () {
 						cb(a === 2 ? null : new Error("Wrong behavior"), a);
 					}, randomTime());
 
-					a++;
+					a += 1;
 				},
 				function (a, cb) {
 					setTimeout(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"), "final")
 					}, randomTime());
 
-					a++;
+					a += 1;
 				}
 			], safe.sure(done, function (result) {
 				done(result !== "final" ? new Error("Wrong behavior") : null);
@@ -322,21 +322,21 @@ describe("safe",function () {
 						cb(null, 'first');
 					}, randomTime());
 
-					a++;
+					a += 1;
 				},
 				function (cb) {
 					setTimeout(function () {
 						cb(a === 2 ? null : new Error("Wrong behavior"), "middle");
 					}, randomTime());
 
-					a++;
+					a += 1;
 				},
 				function (cb) {
 					setTimeout(function () {
 						cb(a === 3 ? null : new Error("Wrong behavior"), "last");
 					}, randomTime());
 
-					a++;
+					a += 1;
 				}
 			], safe.sure(done, function (result) {
 				done((result[0] !== "first" || result[1] !== "middle" || result[2] !== "last") ? new Error("Wrong behavior") : null);
@@ -558,6 +558,34 @@ describe("safe",function () {
 			}));
 		})
 	})
+	describe("times", function () {
+		it("should execute asynchronous times", function (done) {
+			safe.times(5, function (i, cb) {
+				setTimeout(function () {
+					cb(null, i += 1);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done(res.join(",") === "1,2,3,4,5" ? null : new Error("Wrong behavior"));
+			}));
+		})
+
+		it("should execute asynchronous times series", function (done) {
+			var execute = 0;
+
+			safe.timesSeries(5, function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, i*2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				done(res.join(",") === "0,2,4,6,8" ? null : new Error("Wrong behavior"));
+			}));
+		})
+	})
 	describe("filter", function () {
 		it("should execute asynchronous filter (array)", function (done) {
 			safe.filter([1,2,3,4,5], function (i, cb) {
@@ -620,7 +648,7 @@ describe("safe",function () {
 
 			safe.retry(function (cb) {
 				setTimeout(function () {
-					i++;
+					i += 1;
 
 					if (i !== 5) {
 						cb(new Error("need more retry"));
@@ -651,7 +679,7 @@ describe("safe",function () {
 						cb();
 					}, randomTime());
 
-					a++;
+					a += 1;
 				}, safe.sure(done, function () {
 					done(a === 5 ? null : new Error("Wrong behavior"));
 				}));
@@ -667,7 +695,7 @@ describe("safe",function () {
 						cb();
 					}, randomTime());
 
-					a++;
+					a += 1;
 				},
 				function () {
 					if (flag)
@@ -697,7 +725,7 @@ describe("safe",function () {
 						cb();
 					}, randomTime());
 
-					a++;
+					a += 1;
 				}, safe.sure(done, function () {
 					done(a === 5 ? null : new Error("Wrong behavior"));
 				}));
@@ -713,7 +741,7 @@ describe("safe",function () {
 						cb();
 					}, randomTime());
 
-					a++;
+					a += 1;
 				},
 				function () {
 					if (flag)
