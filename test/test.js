@@ -416,16 +416,10 @@ describe("safe",function () {
 				});
 			}, 1);
 
-			var arr = [], sature = 0;
-
-			queue.saturated = function () {
-				if (queue.length() < 2)
-					throw new Error("Wrong behavior");
-				sature = 1;
-			}
+			var arr = [];
 
 			queue.drain = function () {
-				if (arr.join(",") !== "1,2,3,4" || !sature)
+				if (arr.join(",") !== "1,2,3,4")
 					return done(new Error("Wrong behavior"));
 				done();
 			}
@@ -476,14 +470,24 @@ describe("safe",function () {
 				task.cmd(function (err, res) {
 					cb((err || res != "test") ? (err || new Error("Wrong behavior")) : null);
 				});
-			}, 1);
+			}, 2);
 
 			queue.pause();
 
-			var arr = [];
+			var arr = [], sature = 0;
+
+			queue.saturated = function () {
+				if (sature)
+					return;
+
+				if (queue.length() !== 2)
+					throw new Error("Wrong behavior");
+
+				sature = 1;
+			}
 
 			queue.drain = function () {
-				if (arr.join(",") !== "4,2,1,3")
+				if (arr.join(",") !== "4,2,1,3" || !sature)
 					return done(new Error("Wrong behavior"));
 				done();
 			}
