@@ -314,7 +314,26 @@ describe("safe",function () {
 				done(result !== "final" ? new Error("Wrong behavior") : null);
 			}));
 		})
-		it("should execute step by step asynchronous functions in series", function (done) {
+		it("should execute step by step asynchronous functions in waterfall (catch errors)", function (done) {
+			safe.waterfall([
+				function (cb) {
+					setTimeout(function () {
+						cb(new Error(1));
+					}, randomTime());
+				},
+				function (cb) {
+					setTimeout(function () {
+						cb(new Error(2));
+					}, randomTime());
+				},
+				function (cb) {
+					throw new Error(3);
+				}
+			], function (err, result) {
+				done(err ? null : new Error("Wrong behavior"));
+			})
+		})
+		it("should execute step by step asynchronous functions  in series", function (done) {
 			var a = 0;
 			safe.series([
 				function (cb) {
@@ -342,6 +361,31 @@ describe("safe",function () {
 				done((result[0] !== "first" || result[1] !== "middle" || result[2] !== "last") ? new Error("Wrong behavior") : null);
 			}));
 		})
+		it("should execute step by step asynchronous functions in series (catch errors)", function (done) {
+			var already = 0;
+
+			safe.series({
+				"2": function (cb) {
+					setTimeout(function () {
+						cb(new Error(1));
+					}, randomTime());
+				},
+				"1": function (cb) {
+					setTimeout(function () {
+						cb(new Error(2));
+					}, randomTime());
+				},
+				"0": function (cb) {
+					throw new Error(3);
+				}
+			}, function (err, result) {
+				if (already)
+					throw new Error("Wrong behavior");
+
+				already = 1;
+				done(err ? null : new Error("Wrong behavior"));
+			})
+		})
 		it("should execute asynchronous functions in parallel", function (done) {
 			safe.parallel({
 				"2": function (cb) {
@@ -362,6 +406,25 @@ describe("safe",function () {
 			}, safe.sure(done, function (result) {
 				done((result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? new Error("Wrong behavior") : null);
 			}));
+		})
+		it("should execute asynchronous functions in parallel (catch errors)", function (done) {
+			safe.parallel({
+				"2": function (cb) {
+					setTimeout(function () {
+						cb(new Error(1));
+					}, randomTime());
+				},
+				"1": function (cb) {
+					setTimeout(function () {
+						cb(new Error(2));
+					}, randomTime());
+				},
+				"0": function (cb) {
+					throw new Error(3);
+				}
+			}, function (err, result) {
+				done(err ? null : new Error("Wrong behavior"));
+			})
 		})
 		it("should automatically resolve dependencies execute asynchronous functions", function (done) {
 			safe.auto({
