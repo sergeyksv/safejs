@@ -465,12 +465,58 @@ describe("safe",function () {
 						cb(null, "Tinker");
 					});
 				}
-			}, safe.sure(done, function (result) {
-				if (result["0"] !== "Tinker" || result["1"] !== "Tailor" || result["2"] !== "Soldier" || result["4"] !== "Spy" || result["3"] !== "Done")
-					return done(new Error("Wrong behavior"));
+			}, function (err, result) {
+				if (result["0"] !== "Tinker" 	||
+					result["1"] !== "Tailor" 	||
+					result["2"] !== "Soldier" 	||
+					result["3"] !== "Done"		||
+					result["4"] !== "Spy")
+						return done(new Error("Wrong behavior"));
 
 				done();
-			}));
+			});
+		})
+		it("Test unresolve dependies in auto", function (done) {
+			safe.auto({
+				"2": function (cb, result) {
+					setTimeout(function () {
+						cb(null, null);
+					}, randomTime());
+				},
+				"1": function (cb, result) {
+					setTimeout(function () {
+						cb(null, null);
+					}, randomTime());
+				},
+				"0": ["3", function (cb) {
+					safe.yield(function () {
+						cb(null, null);
+					});
+				}]
+			}, function (err, result) {
+				done(err ? null : new Error("Wrong behavior"));
+			});
+		})
+		it("Test cyclic dependies in auto", function (done) {
+			safe.auto({
+				"2": ["1", function (cb, result) {
+					setTimeout(function () {
+						cb(null, null);
+					}, randomTime());
+				}],
+				"1": ["0", "2", function (cb, result) {
+					setTimeout(function () {
+						cb(null, null);
+					}, randomTime());
+				}],
+				"0": function (cb) {
+					safe.yield(function () {
+						cb(null, null);
+					});
+				}
+			}, function (err, result) {
+				done(err ? null : new Error("Wrong behavior"));
+			});
 		})
 		it("queue", function (done) {
 			var queue = safe.queue(function(task, cb){
@@ -479,54 +525,34 @@ describe("safe",function () {
 				});
 			}, 1);
 
-			var arr = [];
+			var counter = 0;
 
 			queue.drain = function () {
-				if (arr.join(",") !== "1,2,3,4")
+				if (counter !== 1000)
 					return done(new Error("Wrong behavior"));
 				done();
 			}
 
-			queue.push({
-				cmd: function(cb){
-					setTimeout(function () {
-						arr.push(1);
-						cb(null, "test");
-					}, randomTime());
+			var arr = [];
+
+			for (var i = 0; i < 1000; i++) {
+				arr.push({
+					cmd: function(cb){
+						safe.yield(function () {
+							counter++;
+							cb(null, "test");
+						});
+					}
+				});
+
+				if (arr.length === 10) {
+					queue.push(arr, function (err) { if (err) throw err; });
+					arr = [];
 				}
-			}, function (err) { if (err) throw err; });
+			}
 
-			queue.push({
-				cmd: function(cb){
-					setTimeout(function () {
-						arr.push(2);
-						cb(null, "test");
-					}, randomTime());
-				}
-			}, function (err) { if (err) throw err; });
-
-			queue.push({
-				cmd: function(cb){
-					setTimeout(function () {
-						arr.push(3);
-						cb(null, "test");
-					}, randomTime());
-				}
-			}, function (err) { if (err) throw err; });
-
-			queue.push({
-				cmd: function(cb){
-					safe.back(function () {
-						arr.push(4);
-						cb(null, "test");
-					});
-				}
-			}, function (err) { if (err) throw err; });
-
-			if (queue.length() != 4)
-				return done(new Error("Wrong behavior"));
-
-			queue.resume();
+			if (queue.length() !== 999)
+				throw new Error("Wrong behavior");
 		})
 		it("priorityQueue", function (done) {
 			var queue = safe.priorityQueue(function(task, cb){
