@@ -281,6 +281,19 @@ describe("safe",function () {
 				a += 1;
 			}, done);
 		})
+
+		it("Check error in each series", function (done) {
+			var a = 0;
+			safe.forEachOfSeries([1,2,3,4,5], function (i, cb) {
+				++a;
+
+				setTimeout(function () {
+					cb(new Error("Exit"));
+				}, randomTime());
+			}, function (err) {
+				done(a === 1 && err ? null : new Error("Wrong behavior"));
+			});
+		})
 	})
 	describe("control flow", function () {
 		it("should execute step by step asynchronous functions in waterfall", function (done) {
@@ -366,24 +379,30 @@ describe("safe",function () {
 
 			safe.series({
 				"2": function (cb) {
+					already = 1;
+
 					setTimeout(function () {
-						cb(new Error(1));
+						cb(new Error(3));
 					}, randomTime());
 				},
 				"1": function (cb) {
+					already = 1;
+
 					setTimeout(function () {
 						cb(new Error(2));
 					}, randomTime());
 				},
 				"0": function (cb) {
-					throw new Error(3);
+					setTimeout(function () {
+						cb(1);
+					}, randomTime());
 				}
 			}, function (err, result) {
 				if (already)
 					throw new Error("Wrong behavior");
 
 				already = 1;
-				done(err ? null : new Error("Wrong behavior"));
+				done(err === 1 ? null : new Error("Wrong behavior"));
 			})
 		})
 		it("should execute asynchronous functions in parallel", function (done) {
@@ -461,9 +480,9 @@ describe("safe",function () {
 					}, randomTime());
 				}],
 				"0": function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(null, "Tinker");
-					});
+					}, randomTime());
 				}
 			}, function (err, result) {
 				if (result["0"] !== "Tinker" 	||
@@ -489,9 +508,9 @@ describe("safe",function () {
 					}, randomTime());
 				},
 				"0": ["3", function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(null, null);
-					});
+					}, randomTime());
 				}]
 			}, function (err, result) {
 				done(err ? null : new Error("Wrong behavior"));
@@ -510,9 +529,30 @@ describe("safe",function () {
 					}, randomTime());
 				}],
 				"0": function (cb) {
-					safe.yield(function () {
+					setTimeout(function () {
 						cb(null, null);
-					});
+					}, randomTime());
+				}
+			}, function (err, result) {
+				done(err ? null : new Error("Wrong behavior"));
+			});
+		})
+		it("Test errors in auto", function (done) {
+			safe.auto({
+				"2": ["1", function (cb, result) {
+					setTimeout(function () {
+						cb(null, null);
+					}, randomTime());
+				}],
+				"1": ["0", function (cb, result) {
+					setTimeout(function () {
+						cb(null, null);
+					}, randomTime());
+				}],
+				"0": function (cb) {
+					setTimeout(function () {
+						cb(new Error("exit"), null);
+					}, randomTime());
 				}
 			}, function (err, result) {
 				done(err ? null : new Error("Wrong behavior"));
