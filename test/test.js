@@ -550,9 +550,7 @@ describe("safe",function () {
 					}, randomTime());
 				}],
 				"0": function (cb) {
-					setTimeout(function () {
-						cb(new Error("exit"), null);
-					}, randomTime());
+					throw new Error('exit');
 				}
 			}, function (err, result) {
 				done(err ? null : new Error("Wrong behavior"));
