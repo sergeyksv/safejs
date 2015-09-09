@@ -22,7 +22,7 @@
 	},
 	"dependencies": {},
 	"devDependencies": {
-		"mocha": ""
+		"mocha": "~1.x.x"
 	},
 	"scripts": {
 		"test": "mocha -bR spec ./test/test.js"
