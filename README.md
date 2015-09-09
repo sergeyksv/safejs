@@ -1,4 +1,4 @@
-Starting from version 0.3.0 safejs implements all functions of [Async](https://github.com/caolan/async) and can transparently replace it. For asyncjs functions library ads its error trap capabilities and also contain some optimizations and speed improovements as well as some new functions. We plan to be less conservative for all necessary changes and welcome any contributions.
+Starting from version 0.3.0 safejs implements all functions of [Async](https://github.com/caolan/async) and can transparently replace it. For asyncjs functions library adds its error trap capabilities and also contain some optimizations and speed improovements as well as some new functions. We plan to be less conservative for all necessary changes and welcome any contributions.
 
 Initially modules was designed to provide set of handy function to deal with thrown errors, callbacks and
 nodejs alike error passing (first function argument).
