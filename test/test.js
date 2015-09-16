@@ -201,28 +201,31 @@ describe("safe",function () {
 	});
 	describe("chain", function () {
 		it("should execute step by step asynchronous functions in chain", function (done) {
-			var a = 0,
-				error = new Error("Wrong behavior");
+			var a = 0;
 
 			safe.chain(function (cb) {
 					safe.yield(function () {
 						cb(null, 'test');
 					});
+
 					a += 1;
 				})
 				.then(function (test, cb) {
-					if (test !== 'test')
-						return cb(error);
+					assert.equal(test, 'test');
 
 					safe.yield(function () {
-						cb(a === 2 ? null : error, a);
+						assert.equal(a, 2);
+						cb(null, a);
 					});
+
 					a += 1;
 				})
 				.then(function (a, cb) {
 					safe.yield(function () {
-						cb(a === 3 ? null : error);
+						assert.equal(a, 3);
+						cb();
 					});
+
 					a += 1;
 				})
 				.done(done);
@@ -241,7 +244,8 @@ describe("safe",function () {
 					cb();
 				}, randomTime());
 			}, safe.sure(done, function (result) {
-				done(a === 0 ? null : new Error("Wrong behavior"));
+				assert.equal(a, 0);
+				done();
 			}));
 		});
 
@@ -257,7 +261,8 @@ describe("safe",function () {
 					cb();
 				}, randomTime());
 			}, safe.sure(done, function (result) {
-				done(a === 0 ? null : new Error("Wrong behavior"));
+				assert.equal(a, 0);
+				done();
 			}));
 		});
 
@@ -267,13 +272,14 @@ describe("safe",function () {
 			for (var i = 0; i < a; i += 1)
 				obj[i] = i;
 
-			safe.forEachOf(obj, function (i, cb) {
+			safe.forEachOf(obj, function (i, key, cb) {
 				setTimeout(function () {
 					a--;
 					cb();
 				}, randomTime());
 			}, safe.sure(done, function (result) {
-				done(a === 0 ? null : new Error("Wrong behavior"));
+				assert.equal(a, 0);
+				done();
 			}));
 		});
 
@@ -289,15 +295,17 @@ describe("safe",function () {
 					cb();
 				}, randomTime());
 			}, safe.sure(done, function (result) {
-				done(a === 0 ? null : new Error("Wrong behavior"));
+				assert.equal(a, 0);
+				done();
 			}));
 		});
 
 		it("should execute asynchronous each series (array)", function (done) {
 			var a = 0;
-			safe.eachSeries([1,2,3,4,5], function (i, cb) {
+			safe.eachSeries([1, 2, 3, 4, 5], function (i, cb) {
 				setTimeout(function () {
-					cb(i === a ? null : new Error("Wrong behavior"));
+					assert.equal(i, a);
+					cb();
 				}, randomTime());
 
 				a += 1;
@@ -308,7 +316,8 @@ describe("safe",function () {
 			var a = 0;
 			safe.forEachOfSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
 				setTimeout(function () {
-					cb(i === a ? null : new Error("Wrong behavior"));
+					assert.equal(i, a);
+					cb();
 				}, randomTime());
 
 				a += 1;
@@ -317,14 +326,16 @@ describe("safe",function () {
 
 		it("Check error in each series", function (done) {
 			var a = 0;
-			safe.forEachOfSeries([1,2,3,4,5], function (i, cb) {
+			safe.forEachOfSeries([1, 2, 3, 4, 5], function (i, key, cb) {
 				++a;
 
 				setTimeout(function () {
 					cb(new Error("Exit"));
 				}, randomTime());
 			}, function (err) {
-				done(a === 1 && err ? null : new Error("Wrong behavior"));
+				assert.equal(a, 1);
+				assert.equal(err.message, "Exit");
+				done();
 			});
 		});
 	});
@@ -341,24 +352,26 @@ describe("safe",function () {
 					a += 1;
 				},
 				function (test, cb) {
-					if (test !== 'test')
-						return cb(new Error("Wrong behavior"));
+					assert.equal(test, 'test');
 
 					setTimeout(function () {
-						cb(a === 2 ? null : new Error("Wrong behavior"), a);
+						assert.equal(a, 2);
+						cb(null, a);
 					}, randomTime());
 
 					a += 1;
 				},
 				function (a, cb) {
 					setTimeout(function () {
-						cb(a === 3 ? null : new Error("Wrong behavior"), "final");
+						assert.equal(a, 3);
+						cb(null, 'final');
 					}, randomTime());
 
 					a += 1;
 				}
 			], safe.sure(done, function (result) {
-				done(result !== "final" ? new Error("Wrong behavior") : null);
+				assert.equal(result, 'final');
+				done();
 			}));
 		});
 
@@ -394,14 +407,16 @@ describe("safe",function () {
 				},
 				function (cb) {
 					setTimeout(function () {
-						cb(a === 2 ? null : new Error("Wrong behavior"), "middle");
+						assert.equal(a, 2);
+						cb(null, "middle");
 					}, randomTime());
 
 					a += 1;
 				},
 				function (cb) {
 					setTimeout(function () {
-						cb(a === 3 ? null : new Error("Wrong behavior"), "last");
+						assert.equal(a, 3);
+						cb(null, "last");
 					}, randomTime());
 
 					a += 1;
@@ -440,7 +455,8 @@ describe("safe",function () {
 					throw new Error("Wrong behavior");
 
 				already = 1;
-				done(err === 1 ? null : new Error("Wrong behavior"));
+				assert.equal(err, 1);
+				done();
 			});
 		});
 
@@ -1072,7 +1088,8 @@ describe("safe",function () {
 		it("should execute function with some arguments applied", function (done) {
 			function foo (text, cb) {
 				setTimeout(function () {
-					cb(text === "test" ? null : new Error("Wrong behavior"));
+					assert.equal(text, "test");
+					cb();
 				}, randomTime());
 			}
 
