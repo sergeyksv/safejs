@@ -245,6 +245,22 @@ describe("safe",function () {
 			}));
 		});
 
+		it("should execute asynchronous each (array, limit)", function (done) {
+			var a = 100;
+			var arr = new Array(a);
+			for (var i = 0; i < arr.length; i += 1)
+				arr[i] = i;
+
+			safe.eachLimit(arr, 20, function (i, cb) {
+				setTimeout(function () {
+					a--;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				done(a === 0 ? null : new Error("Wrong behavior"));
+			}));
+		});
+
 		it("should execute asynchronous each (object)", function (done) {
 			var a = 1000;
 			var obj = {};
@@ -252,6 +268,22 @@ describe("safe",function () {
 				obj[i] = i;
 
 			safe.forEachOf(obj, function (i, cb) {
+				setTimeout(function () {
+					a--;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				done(a === 0 ? null : new Error("Wrong behavior"));
+			}));
+		});
+
+		it("should execute asynchronous each (object, limit)", function (done) {
+			var a = 100;
+			var obj = {};
+			for (var i = 0; i < a; i += 1)
+				obj[i] = i;
+
+			safe.forEachOfLimit(obj, 20, function (i, cb) {
 				setTimeout(function () {
 					a--;
 					cb();
@@ -296,6 +328,7 @@ describe("safe",function () {
 			});
 		});
 	});
+
 	describe("control flow", function () {
 		it("should execute step by step asynchronous functions in waterfall", function (done) {
 			var a = 0;
@@ -328,6 +361,7 @@ describe("safe",function () {
 				done(result !== "final" ? new Error("Wrong behavior") : null);
 			}));
 		});
+
 		it("should execute step by step asynchronous functions in waterfall (catch errors)", function (done) {
 			safe.waterfall([
 				function (cb) {
@@ -347,6 +381,7 @@ describe("safe",function () {
 				done(err ? null : new Error("Wrong behavior"));
 			});
 		});
+
 		it("should execute step by step asynchronous functions  in series", function (done) {
 			var a = 0;
 			safe.series([
@@ -372,9 +407,11 @@ describe("safe",function () {
 					a += 1;
 				}
 			], safe.sure(done, function (result) {
-				done((result[0] !== "first" || result[1] !== "middle" || result[2] !== "last") ? new Error("Wrong behavior") : null);
+				assert.deepEqual(result, ["first", "middle", "last"]);
+				done();
 			}));
 		});
+
 		it("should execute step by step asynchronous functions in series (catch errors)", function (done) {
 			var already = 0;
 
@@ -406,6 +443,7 @@ describe("safe",function () {
 				done(err === 1 ? null : new Error("Wrong behavior"));
 			});
 		});
+
 		it("should execute asynchronous functions in parallel", function (done) {
 			safe.parallel({
 				"2": function (cb) {
@@ -424,9 +462,44 @@ describe("safe",function () {
 					}, randomTime());
 				}
 			}, safe.sure(done, function (result) {
-				done((result["0"] !== "first" || result["1"] !== "middle" || result["2"] !== "last") ? new Error("Wrong behavior") : null);
+				assert.deepEqual(result, { '2': 'last', '1': 'middle', '0': 'first' });
+				done();
 			}));
 		});
+
+		it("should execute asynchronous functions in parallel (limit)", function (done) {
+			safe.parallelLimit({
+				"4": function (cb) {
+					setTimeout(function () {
+						cb(null, 5);
+					}, randomTime());
+				},
+				"3": function (cb) {
+					setTimeout(function () {
+						cb(null, 4);
+					}, randomTime());
+				},
+				"2": function (cb) {
+					setTimeout(function () {
+						cb(null, 3);
+					}, randomTime());
+				},
+				"1": function (cb) {
+					setTimeout(function () {
+						cb(null, 2);
+					}, randomTime());
+				},
+				"0": function (cb) {
+					setTimeout(function () {
+						cb(null, 1);
+					}, randomTime());
+				}
+			}, 2, safe.sure(done, function (result) {
+				assert.deepEqual(result, { '0': 1, '1': 2, '2': 3, '3': 4, '4': 5 });
+				done();
+			}));
+		});
+
 		it("should execute asynchronous functions in parallel (catch errors)", function (done) {
 			safe.parallel({
 				"2": function (cb) {
@@ -446,6 +519,7 @@ describe("safe",function () {
 				done(err ? null : new Error("Wrong behavior"));
 			});
 		});
+
 		it("should automatically resolve dependencies execute asynchronous functions", function (done) {
 			safe.auto({
 				"4": ["0", "2", function (cb, result) {
@@ -496,6 +570,7 @@ describe("safe",function () {
 				done();
 			});
 		});
+
 		it("Test unresolve dependies in auto", function (done) {
 			safe.auto({
 				"2": function (cb, result) {
@@ -517,6 +592,7 @@ describe("safe",function () {
 				done(err ? null : new Error("Wrong behavior"));
 			});
 		});
+
 		it("Test cyclic dependies in auto", function (done) {
 			safe.auto({
 				"2": ["1", function (cb, result) {
@@ -538,6 +614,7 @@ describe("safe",function () {
 				done(err ? null : new Error("Wrong behavior"));
 			});
 		});
+
 		it("Test errors in auto", function (done) {
 			safe.auto({
 				"2": ["1", function (cb, result) {
@@ -557,6 +634,7 @@ describe("safe",function () {
 				done(err ? null : new Error("Wrong behavior"));
 			});
 		});
+
 		it("queue", function (done) {
 			var queue = safe.queue(function(task, cb){
 				task.cmd(function (err, res) {
@@ -593,6 +671,7 @@ describe("safe",function () {
 			if (queue.length() !== 999)
 				throw new Error("Wrong behavior");
 		});
+
 		it("priorityQueue", function (done) {
 			var queue = safe.priorityQueue(function(task, cb){
 				task.cmd(function (err, res) {
@@ -662,9 +741,21 @@ describe("safe",function () {
 			queue.resume();
 		});
 	});
+
 	describe("map", function () {
-		it("should execute asynchronous map", function (done) {
+		it("should execute asynchronous map (object)", function (done) {
 			safe.map({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				setTimeout(function () {
+					cb(null, i*2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, [2, 4, 6, 8, 10]);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous map (array, limit)", function (done) {
+			safe.mapLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
 				setTimeout(function () {
 					cb(null, i*2);
 				}, randomTime());
@@ -692,6 +783,7 @@ describe("safe",function () {
 			}));
 		});
 	});
+
 	describe("sortBy", function () {
 		it("should execute asynchronous sort", function (done) {
 			safe.sortBy([3, 5, 1, 4, 2], function (i, cb) {
@@ -704,6 +796,7 @@ describe("safe",function () {
 			}));
 		});
 	});
+
 	describe("times", function () {
 		it("should execute asynchronous times", function (done) {
 			safe.times(5, function (i, cb) {
@@ -712,6 +805,17 @@ describe("safe",function () {
 				}, randomTime());
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [1, 2, 3, 4, 5]);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous times (limit)", function (done) {
+			safe.timesLimit(10, 2, function (i, cb) {
+				setTimeout(function () {
+					cb(null, i += 1);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 				done();
 			}));
 		});
@@ -734,6 +838,7 @@ describe("safe",function () {
 			}));
 		});
 	});
+
 	describe("filter", function () {
 		it("should execute asynchronous filter (array)", function (done) {
 			safe.filter([1, 2, 3, 4, 5], function (i, cb) {
@@ -746,10 +851,21 @@ describe("safe",function () {
 			}));
 		});
 
+		it("should execute asynchronous filter (array, limit)", function (done) {
+			safe.filterLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(null, i%2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, [1, 3, 5]);
+				done();
+			}));
+		});
+
 		it("should execute asynchronous filter series (array)", function (done) {
 			var execute = 0;
 
-			safe.filterSeries([1,2,3,4,5], function (i, cb) {
+			safe.filterSeries([1, 2, 3, 4, 5], function (i, cb) {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
@@ -764,9 +880,21 @@ describe("safe",function () {
 			}));
 		});
 	});
+
 	describe("reject", function () {
 		it("should execute asynchronous reject (array)", function (done) {
-			safe.reject([1,2,3,4,5], function (i, cb) {
+			safe.reject([1, 2, 3, 4, 5], function (i, cb) {
+				setTimeout(function () {
+					cb(null, i%2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, [2, 4]);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous reject (array, limit)", function (done) {
+			safe.rejectLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
 				setTimeout(function () {
 					cb(null, i%2);
 				}, randomTime());
@@ -794,6 +922,7 @@ describe("safe",function () {
 			}));
 		});
 	});
+
 	describe("retry", function () {
 		it("should few times retry to execute function", function (done) {
 			var i = 0;
@@ -814,6 +943,7 @@ describe("safe",function () {
 			}));
 		});
 	});
+
 	describe("do-while", function () {
 		it("should execute while a condition is true", function (done) {
 			var a = 0;
@@ -838,6 +968,7 @@ describe("safe",function () {
 					done();
 				}));
 		});
+
 		it("should execute while a condition is true (post check)", function (done) {
 			var a = 0;
 			var flag = true;
@@ -862,6 +993,7 @@ describe("safe",function () {
 				}));
 		});
 	});
+
 	describe("do-until", function () {
 		it("should execute until a condition is false", function (done) {
 			var a = 0;
@@ -886,6 +1018,7 @@ describe("safe",function () {
 					done();
 				}));
 		});
+
 		it("should execute until a condition is false (post check)", function (done) {
 			var a = 0;
 			var flag = true;
@@ -910,6 +1043,7 @@ describe("safe",function () {
 				}));
 		});
 	});
+
 	describe("reduce", function () {
 		it("should reduce array an asynchronous iterator", function (done) {
 			safe.reduce([1,2,3,4,5], 0, function (memo, item , cb) {
@@ -921,6 +1055,7 @@ describe("safe",function () {
 				done();
 			}));
 		});
+
 		it("should reduce array an asynchronous iterator in reverse order", function (done) {
 			safe.reduceRight([1,2,3,4,5], 15, function (memo, item , cb) {
 				setTimeout(function () {
