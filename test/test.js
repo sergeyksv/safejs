@@ -1067,6 +1067,7 @@ describe("safe",function () {
 			}));
 		});
 	});
+
 	describe("apply", function () {
 		it("should execute function with some arguments applied", function (done) {
 			function foo (text, cb) {
@@ -1079,6 +1080,22 @@ describe("safe",function () {
 				safe.apply(foo, "test"),
 				safe.apply(foo, "test")
 			], done);
+		});
+	});
+
+	describe("ensure to async", function () {
+		it("should execute asynchronous map with sync callback", function (done) {
+			var a = 5000;
+			var arr = new Array(a);
+			for (var i = 0; i < arr.length; i += 1)
+				arr[i] = i;
+
+			safe.map(arr, safe.ensureAsync(function (i, cb) {
+				cb(null, i);
+			}), safe.sure(done, function (result) {
+				assert.deepEqual(result, arr);
+				done(null);
+			}));
 		});
 	});
 });
