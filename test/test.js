@@ -301,9 +301,15 @@ describe("safe",function () {
 		});
 
 		it("should execute asynchronous each series (array)", function (done) {
-			var a = 0;
+			var a = 0, execute;
+
 			safe.eachSeries([1, 2, 3, 4, 5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
 				setTimeout(function () {
+					execute = 0;
 					assert.equal(i, a);
 					cb();
 				}, randomTime());
@@ -313,9 +319,15 @@ describe("safe",function () {
 		});
 
 		it("should execute asynchronous each series (object)", function (done) {
-			var a = 0;
+			var a = 0, execute;
+
 			safe.forEachOfSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
 				setTimeout(function () {
+					execute = 0;
 					assert.equal(i, a);
 					cb();
 				}, randomTime());
@@ -395,7 +407,7 @@ describe("safe",function () {
 			});
 		});
 
-		it("should execute step by step asynchronous functions  in series", function (done) {
+		it("should execute step by step asynchronous functions in series", function (done) {
 			var a = 0;
 			safe.series([
 				function (cb) {
@@ -800,6 +812,48 @@ describe("safe",function () {
 		});
 	});
 
+	describe("concat", function () {
+		it("should execute asynchronous arrays concat", function (done) {
+			safe.concat([1, 2, 3, 4, 5], function (i, cb) {
+				setTimeout(function () {
+					cb(null, [i, i*2]);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, [1, 2, 2, 4, 3, 6, 4, 8, 5, 10]);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous arrays concat (limit)", function (done) {
+			safe.concatLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(null, [i, i*2]);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, [1, 2, 2, 4, 3, 6, 4, 8, 5, 10]);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous arrays concat series", function (done) {
+			var execute = 0;
+
+			safe.concatSeries([1, 2, 3, 4, 5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, [i, i*2]);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, [1, 2, 2, 4, 3, 6, 4, 8, 5, 10]);
+				done();
+			}));
+		});
+	});
+
 	describe("sortBy", function () {
 		it("should execute asynchronous sort", function (done) {
 			safe.sortBy([3, 5, 1, 4, 2], function (i, cb) {
@@ -923,7 +977,7 @@ describe("safe",function () {
 		it("should execute asynchronous reject series (array)", function (done) {
 			var execute = 0;
 
-			safe.rejectSeries([1,2,3,4,5], function (i, cb) {
+			safe.rejectSeries([1, 2, 3, 4, 5], function (i, cb) {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
