@@ -1,5 +1,8 @@
 "use strict";
 
+if (typeof Promise !== "function")
+	require("es6-promise");
+
 var assert = require('assert');
 var safe = require('../lib/safe.js');
 
@@ -366,12 +369,14 @@ describe("safe",function () {
 				function (test, cb) {
 					assert.equal(test, 'test');
 
-					setTimeout(function () {
-						assert.equal(a, 2);
-						cb(null, a);
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							assert.equal(a, 2);
+							resolve(a);
+						}, randomTime());
 
-					a += 1;
+						a += 1;
+					});
 				},
 				function (a, cb) {
 					setTimeout(function () {
@@ -390,17 +395,19 @@ describe("safe",function () {
 		it("should execute step by step asynchronous functions in waterfall (catch errors)", function (done) {
 			safe.waterfall([
 				function (cb) {
-					setTimeout(function () {
-						cb(new Error(1));
-					}, randomTime());
+					throw new Error(1);
+				},
+				function (cb) {
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							reject(new Error(2));
+						}, randomTime());
+					});
 				},
 				function (cb) {
 					setTimeout(function () {
-						cb(new Error(2));
+						cb(new Error(3));
 					}, randomTime());
-				},
-				function (cb) {
-					throw new Error(3);
 				}
 			], function (err, result) {
 				done(err ? null : new Error("Wrong behavior"));
@@ -418,12 +425,14 @@ describe("safe",function () {
 					a += 1;
 				},
 				function (cb) {
-					setTimeout(function () {
-						assert.equal(a, 2);
-						cb(null, "middle");
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							assert.equal(a, 2);
+							resolve("middle");
+						}, randomTime());
 
-					a += 1;
+						a += 1;
+					});
 				},
 				function (cb) {
 					setTimeout(function () {
@@ -446,9 +455,11 @@ describe("safe",function () {
 				"2": function (cb) {
 					already = 1;
 
-					setTimeout(function () {
-						cb(new Error(3));
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							reject(new Error(3));
+						}, randomTime());
+					});
 				},
 				"1": function (cb) {
 					already = 1;
@@ -480,9 +491,11 @@ describe("safe",function () {
 					}, randomTime());
 				},
 				"1": function (cb) {
-					setTimeout(function () {
-						cb(null, "middle");
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							resolve("middle");
+						}, randomTime());
+					});
 				},
 				"0": function (cb) {
 					setTimeout(function () {
@@ -498,9 +511,11 @@ describe("safe",function () {
 		it("should execute asynchronous functions in parallel (limit)", function (done) {
 			safe.parallelLimit({
 				"4": function (cb) {
-					setTimeout(function () {
-						cb(null, 5);
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							resolve(5);
+						}, randomTime());
+					});
 				},
 				"3": function (cb) {
 					setTimeout(function () {
@@ -508,9 +523,11 @@ describe("safe",function () {
 					}, randomTime());
 				},
 				"2": function (cb) {
-					setTimeout(function () {
-						cb(null, 3);
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							resolve(3);
+						}, randomTime());
+					});
 				},
 				"1": function (cb) {
 					setTimeout(function () {
@@ -536,9 +553,9 @@ describe("safe",function () {
 					}, randomTime());
 				},
 				"1": function (cb) {
-					setTimeout(function () {
-						cb(new Error(2));
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						throw new Error(2);
+					});
 				},
 				"0": function (cb) {
 					throw new Error(3);
@@ -562,9 +579,11 @@ describe("safe",function () {
 					if (result["1"] !== "Tailor" || result["2"] !== "Soldier" || result["4"] !== "Spy")
 						return cb(new Error("Wrong behavior"));
 
-					setTimeout(function () {
-						cb(null, "Done");
-					}, randomTime());
+					return new Promise(function(resolve, reject){
+						setTimeout(function () {
+							resolve("Done");
+						}, randomTime());
+					});
 				}],
 				"2": ["0", function (cb, result) {
 					if (result["0"] !== "Tinker")
@@ -665,7 +684,7 @@ describe("safe",function () {
 
 		it("queue", function (done) {
 			var queue = safe.queue(function(task, cb){
-				task.cmd(function (err, res) {
+				return task.cmd(function (err, res) {
 					cb((err || res != "test") ? (err || new Error("Wrong behavior")) : null);
 				});
 			}, 1);
@@ -702,7 +721,7 @@ describe("safe",function () {
 
 		it("priorityQueue", function (done) {
 			var queue = safe.priorityQueue(function(task, cb){
-				task.cmd(function (err, res) {
+				return task.cmd(function (err, res) {
 					cb((err || res != "test") ? (err || new Error("Wrong behavior")) : null);
 				});
 			}, 2);
@@ -738,9 +757,11 @@ describe("safe",function () {
 
 			queue.push({
 				cmd: function(cb){
-					safe.yield(function () {
-						arr.push(2);
-						cb(null, "test");
+					return new Promise(function(resolve, reject){
+						safe.yield(function () {
+							arr.push(2);
+							resolve("test");
+						});
 					});
 				}
 			}, 3, function (err) { if (err) throw err; });
@@ -756,9 +777,9 @@ describe("safe",function () {
 
 			queue.push({
 				cmd: function(cb){
-					safe.yield(function () {
+					return new Promise(function(resolve, reject){
 						arr.push(4);
-						cb(null, "test");
+						resolve("test");
 					});
 				}
 			}, 4, function (err) { if (err) throw err; });
@@ -773,9 +794,11 @@ describe("safe",function () {
 	describe("map", function () {
 		it("should execute asynchronous map (object)", function (done) {
 			safe.map({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
-				setTimeout(function () {
-					cb(null, i*2);
-				}, randomTime());
+				return new Promise(function(resolve, reject){
+					setTimeout(function () {
+						resolve(i*2);
+					}, randomTime());
+				});
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [2, 4, 6, 8, 10]);
 				done();
@@ -826,9 +849,11 @@ describe("safe",function () {
 
 		it("should execute asynchronous arrays concat (limit)", function (done) {
 			safe.concatLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
-				setTimeout(function () {
-					cb(null, [i, i*2]);
-				}, randomTime());
+				return new Promise(function(resolve, reject){
+					setTimeout(function () {
+						resolve([i, i*2]);
+					}, randomTime());
+				});
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [1, 2, 2, 4, 3, 6, 4, 8, 5, 10]);
 				done();
@@ -857,9 +882,9 @@ describe("safe",function () {
 	describe("sortBy", function () {
 		it("should execute asynchronous sort", function (done) {
 			safe.sortBy([3, 5, 1, 4, 2], function (i, cb) {
-				setTimeout(function () {
-					cb(null, i);
-				}, randomTime());
+				return new Promise(function(resolve, reject){
+					resolve(i);
+				});
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [1, 2, 3, 4, 5]);
 				done();
@@ -897,11 +922,13 @@ describe("safe",function () {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
-				execute = 1;
-				setTimeout(function () {
-					execute = 0;
-					cb(null, i*2);
-				}, randomTime());
+				return new Promise(function(resolve, reject){
+					execute = 1;
+					setTimeout(function () {
+						execute = 0;
+						resolve(i*2);
+					}, randomTime());
+				});
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [0, 2, 4, 6, 8]);
 				done();
@@ -912,9 +939,9 @@ describe("safe",function () {
 	describe("filter", function () {
 		it("should execute asynchronous filter (array)", function (done) {
 			safe.filter([1, 2, 3, 4, 5], function (i, cb) {
-				setTimeout(function () {
-					cb(null, i%2);
-				}, randomTime());
+				return new Promise(function(resolve, reject){
+					resolve(i%2);
+				});
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [1, 3, 5]);
 				done();
@@ -965,9 +992,11 @@ describe("safe",function () {
 
 		it("should execute asynchronous reject (array, limit)", function (done) {
 			safe.rejectLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
-				setTimeout(function () {
-					cb(null, i%2);
-				}, randomTime());
+				return new Promise(function(resolve, reject){
+					setTimeout(function () {
+						resolve(i%2);
+					}, randomTime());
+				});
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [2, 4]);
 				done();
@@ -998,15 +1027,14 @@ describe("safe",function () {
 			var i = 0;
 
 			safe.retry(function (cb) {
-				setTimeout(function () {
+				return new Promise(function(resolve, reject){
 					i += 1;
 
-					if (i !== 5) {
-						cb(new Error("need more retry"));
-					} else
-						cb(null, "done");
-
-				}, randomTime());
+					if (i !== 5)
+						reject(new Error("need more retry"));
+					else
+						resolve("done");
+				});
 			}, safe.sure(done, function (result) {
 				assert.equal(result, "done");
 				done();
@@ -1025,14 +1053,16 @@ describe("safe",function () {
 					return a < 5;
 				},
 				function (cb) {
-					if (flag)
-						cb(new Error("Wrong behavior"));
+					return new Promise(function(resolve, reject){
+						if (flag)
+							reject(new Error("Wrong behavior"));
 
-					setTimeout(function () {
-						cb();
-					}, randomTime());
+						setTimeout(function () {
+							resolve();
+						}, randomTime());
 
-					a += 1;
+						a += 1;
+					});
 				}, safe.sure(done, function () {
 					assert.equal(a, 5);
 					done();
@@ -1075,14 +1105,16 @@ describe("safe",function () {
 					return a === 5;
 				},
 				function (cb) {
-					if (flag)
-						cb(new Error("Wrong behavior"));
+					return new Promise(function(resolve, reject){
+						if (flag)
+							reject(new Error("Wrong behavior"));
 
-					setTimeout(function () {
-						cb();
-					}, randomTime());
+						setTimeout(function () {
+							resolve();
+						}, randomTime());
 
-					a += 1;
+						a += 1;
+					});
 				}, safe.sure(done, function () {
 					assert.equal(a, 5);
 					done();
@@ -1117,9 +1149,9 @@ describe("safe",function () {
 	describe("reduce", function () {
 		it("should reduce array an asynchronous iterator", function (done) {
 			safe.reduce([1,2,3,4,5], 0, function (memo, item , cb) {
-				setTimeout(function () {
-					cb(null, memo + item);
-				}, randomTime());
+				return new Promise(function(resolve, reject){
+					resolve(memo + item);
+				});
 			}, safe.sure(done, function (result) {
 				assert.equal(result, 15);
 				done();

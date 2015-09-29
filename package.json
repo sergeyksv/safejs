@@ -1,7 +1,7 @@
 {
 	"author": "Sergey Korotkov <sergeyksv@gmail.com>",
 	"name": "safe",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/sergeyksv/safejs.git"
@@ -22,7 +22,8 @@
 	},
 	"dependencies": {},
 	"devDependencies": {
-		"mocha": "~1.x.x"
+		"mocha": "~1.x.x",
+		"es6-promise": "~3.x.x"
 	},
 	"scripts": {
 		"test": "mocha -bR spec ./test/test.js"
