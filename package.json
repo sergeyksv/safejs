@@ -22,7 +22,7 @@
 	},
 	"dependencies": {},
 	"devDependencies": {
-		"mocha": "~1.x.x",
+		"mocha": "~2.3.x",
 		"es6-promise": "~3.x.x"
 	},
 	"scripts": {
