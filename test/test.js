@@ -1404,7 +1404,7 @@ describe("safe",function () {
 	});
 
 	describe("forever", function () {
-		it("should execute forever until without errback", function (done) {
+		it("should execute forever until without errback (async)", function (done) {
 			var a = 0;
 			var flag = false;
 
@@ -1421,6 +1421,21 @@ describe("safe",function () {
 			}, function (err) {
 				assert.equal(err, "exit");
 				assert.equal(a, 7);
+				done();
+			});
+		});
+	});
+
+	describe("forever", function () {
+		it("should execute forever until without errback (ensure async)", function (done) {
+			var a = 0;
+
+			safe.forever(function (next) {
+				++a;
+				next(a === 2000 ? "exit" : null);
+			}, function (err) {
+				assert.equal(err, "exit");
+				assert.equal(a, 2000);
 				done();
 			});
 		});
