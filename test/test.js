@@ -711,19 +711,21 @@ describe("safe",function () {
 				done(err ? null : new Error("Wrong behavior"));
 			});
 		});
+	});
 
+	describe("queue", function () {
 		it("queue", function (done) {
 			var queue = safe.queue(function(task, cb){
 				return task.cmd(function (err, res) {
-					cb((err || res != "test") ? (err || new Error("Wrong behavior")) : null);
+					assert.equal(res, "test");
+					cb(err);
 				});
 			}, 1);
 
 			var counter = 0;
 
 			queue.drain = function () {
-				if (counter !== 1000)
-					return done(new Error("Wrong behavior"));
+				assert.equal(counter, 1000);
 				done();
 			};
 
@@ -745,14 +747,14 @@ describe("safe",function () {
 				}
 			}
 
-			if (queue.length() !== 999)
-				throw new Error("Wrong behavior");
+			assert.equal(queue.length(), 999);
 		});
 
 		it("priorityQueue", function (done) {
 			var queue = safe.priorityQueue(function(task, cb){
 				return task.cmd(function (err, res) {
-					cb((err || res != "test") ? (err || new Error("Wrong behavior")) : null);
+					assert.equal(res, "test");
+					cb(err);
 				});
 			}, 2);
 
@@ -764,15 +766,17 @@ describe("safe",function () {
 				if (sature)
 					return;
 
-				if (queue.length() !== 2)
-					throw new Error("Wrong behavior");
+				assert.equal(queue.length(), 2);
 
 				sature = 1;
 			};
 
 			queue.drain = function () {
-				if (arr.join(",") !== "4,2,1,3" || !sature)
+				assert.deepEqual(arr, [4,2,1,3]);
+
+				if (!sature)
 					return done(new Error("Wrong behavior"));
+
 				done();
 			};
 
@@ -814,10 +818,44 @@ describe("safe",function () {
 				}
 			}, 4, function (err) { if (err) throw err; });
 
-			if (queue.length() != 4)
-				return done(new Error("Wrong behavior"));
+			assert.equal(queue.length(), 4);
 
 			queue.resume();
+		});
+
+		it("cargo", function (done) {
+			var cargo = safe.cargo(function(tasks, cb){
+				safe.each(tasks, function (task, cb) {
+					task.cmd(function (err, res) {
+						assert.equal(res, "test");
+						cb(err);
+					});
+				}, cb);
+			}, 100);
+
+			var counter = 0;
+
+			cargo.drain = function () {
+				assert.equal(counter, 1000);
+				done();
+			};
+
+			var arr = [];
+
+			for (var i = 0; i < 1000; i++) {
+				arr.push({
+					cmd: function(cb){
+						safe.yield(function () {
+							counter++;
+							cb(null, "test");
+						});
+					}
+				});
+			}
+
+			cargo.push(arr, function (err) { if (err) throw err; });
+
+			assert.equal(cargo.length(), 900);
 		});
 	});
 
@@ -1478,6 +1516,60 @@ describe("safe",function () {
 				safe.apply(foo, "test"),
 				safe.apply(foo, "test")
 			], done);
+		});
+
+		it("should execute array function with some arguments applied", function (done) {
+			var a = 2;
+
+			function foo (text, cb) {
+				setTimeout(function () {
+					a--;
+					assert.equal(text, "test");
+					cb();
+				}, randomTime());
+			}
+
+			function bar (text, cb) {
+				setTimeout(function () {
+					a--;
+					assert.equal(text, "test");
+					cb();
+				}, randomTime());
+			}
+
+			safe.applyEach([foo, bar], 'test', safe.sure(done, function () {
+				assert.equal(a, 0);
+				done();
+			}));
+		});
+
+		it("should execute array function with some arguments applied (series, closure)", function (done) {
+			var arr = [1, 2, 3],
+				a = -1;
+
+			function foo (item, cb) {
+				a++;
+
+				setTimeout(function () {
+					assert.equal(item, arr[a]);
+					cb();
+				}, randomTime());
+			}
+
+			function bar (item, cb) {
+				assert.equal(item, arr[a]);
+
+				setTimeout(function () {
+					assert.equal(item, arr[a]);
+					cb();
+				}, randomTime());
+			}
+
+			safe.eachSeries(
+				arr,
+				safe.applyEachSeries([foo, bar]),
+				done
+			);
 		});
 	});
 
