@@ -1,7 +1,7 @@
 {
 	"author": "Sergey Korotkov <sergeyksv@gmail.com>",
 	"name": "safe",
-	"version": "0.3.4",
+	"version": "0.3.5",
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/sergeyksv/safejs.git"

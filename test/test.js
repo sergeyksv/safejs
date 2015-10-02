@@ -1241,7 +1241,7 @@ describe("safe",function () {
 	});
 
 	describe("do-while", function () {
-		it("should execute while a condition is true", function (done) {
+		it("should execute while a condition is true (sync tester)", function (done) {
 			var a = 0;
 			var flag = false;
 
@@ -1264,10 +1264,11 @@ describe("safe",function () {
 				}, safe.sure(done, function () {
 					assert.equal(a, 5);
 					done();
-				}));
+				})
+			);
 		});
 
-		it("should execute while a condition is true (post check)", function (done) {
+		it("should execute while a condition is true (post check, sync tester)", function (done) {
 			var a = 0;
 			var flag = true;
 
@@ -1285,6 +1286,63 @@ describe("safe",function () {
 						throw new Error("Wrong behavior");
 
 					return a < 5;
+				}, safe.sure(done, function () {
+					assert.equal(a, 5);
+					done();
+				}));
+		});
+	});
+
+	describe("do-during", function () {
+		it("should execute while a condition is true", function (done) {
+			var a = 0;
+			var flag = false;
+
+			safe.during(
+				function (cb) {
+					flag = false;
+					setTimeout(function () {
+						cb(null, a < 5);
+					}, randomTime());
+				},
+				function (cb) {
+					return new Promise(function(resolve, reject){
+						if (flag)
+							reject(new Error("Wrong behavior"));
+
+						setTimeout(function () {
+							resolve();
+						}, randomTime());
+
+						a += 1;
+					});
+				}, safe.sure(done, function () {
+					assert.equal(a, 5);
+					done();
+				})
+			);
+		});
+
+		it("should execute while a condition is true (post check)", function (done) {
+			var a = 0;
+			var flag = true;
+
+			safe.doDuring(
+				function (cb) {
+					flag = false;
+					setTimeout(function () {
+						cb();
+					}, randomTime());
+
+					a += 1;
+				},
+				function (cb) {
+					if (flag)
+						throw new Error("Wrong behavior");
+
+					setTimeout(function () {
+						cb(null, a < 5);
+					}, randomTime());
 				}, safe.sure(done, function () {
 					assert.equal(a, 5);
 					done();
@@ -1314,6 +1372,7 @@ describe("safe",function () {
 						a += 1;
 					});
 				}, safe.sure(done, function () {
+					console.log(a);
 					assert.equal(a, 5);
 					done();
 				}));
@@ -1341,6 +1400,29 @@ describe("safe",function () {
 					assert.equal(a, 5);
 					done();
 				}));
+		});
+	});
+
+	describe("forever", function () {
+		it("should execute forever until without errback", function (done) {
+			var a = 0;
+			var flag = false;
+
+			safe.forever(function (next) {
+				if (flag)
+					return done(new Error("Wrong behavior"));
+
+				flag = true;
+				setTimeout(function () {
+					flag = false;
+					a++;
+					next(a === 7 ? "exit" : null);
+				}, randomTime());
+			}, function (err) {
+				assert.equal(err, "exit");
+				assert.equal(a, 7);
+				done();
+			});
 		});
 	});
 
