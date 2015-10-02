@@ -252,6 +252,36 @@ describe("safe",function () {
 			}));
 		});
 
+		it("should execute asynchronous each (empty array)", function (done) {
+			var a = 0,
+				arr = [];
+
+			safe.each(arr, function (i, cb) {
+				setTimeout(function () {
+					a++;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				assert.equal(a, 0);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous each (empty object)", function (done) {
+			var a = 0,
+				obj = {};
+
+			safe.forEachOf(obj, function (i, key, cb) {
+				setTimeout(function () {
+					a++;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				assert.equal(a, 0);
+				done();
+			}));
+		});
+
 		it("should execute asynchronous each (array, limit)", function (done) {
 			var a = 100;
 			var arr = new Array(a);
@@ -1019,6 +1049,174 @@ describe("safe",function () {
 				assert.deepEqual(res, [2, 4]);
 				done();
 			}));
+		});
+	});
+
+	describe("detect", function () {
+		it("should execute asynchronous detect (array)", function (done) {
+			safe.detect([1, 2, 3, 4, 5], function (i, cb) {
+				setTimeout(function () {
+					cb(i === 2);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, 2);
+				done();
+			});
+		});
+
+		it("should execute asynchronous detect (array, limit)", function (done) {
+			safe.detectLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(i === 6);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, undefined);
+				done();
+			});
+		});
+
+		it("should execute asynchronous detect series (array)", function (done) {
+			var execute = 0;
+
+			safe.detectSeries([1, 2, 3, 4, 5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(i === 4);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, 4);
+				done();
+			});
+		});
+	});
+
+	describe("detect", function () {
+		it("should execute asynchronous detect (array)", function (done) {
+			safe.detect([1, 2, 3, 4, 5], function (i, cb) {
+				setTimeout(function () {
+					cb(i === 2);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, 2);
+				done();
+			});
+		});
+
+		it("should execute asynchronous detect (array, limit)", function (done) {
+			safe.detectLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(i === 6);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, undefined);
+				done();
+			});
+		});
+
+		it("should execute asynchronous detect series (array)", function (done) {
+			var execute = 0;
+
+			safe.detectSeries([1, 2, 3, 4, 5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(i === 4);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, 4);
+				done();
+			});
+		});
+	});
+
+	describe("some", function () {
+		it("should execute asynchronous some (array)", function (done) {
+			safe.some([1, 2, 3, 4, 5], function (i, cb) {
+				setTimeout(function () {
+					cb(i === 2);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, true);
+				done();
+			});
+		});
+
+		it("should execute asynchronous some (array, limit)", function (done) {
+			safe.someLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(i === 6);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, false);
+				done();
+			});
+		});
+
+		it("should execute asynchronous some series (array)", function (done) {
+			var execute = 0;
+
+			safe.someSeries([1, 2, 3, 4, 5], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(i === 4);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, true);
+				done();
+			});
+		});
+	});
+
+	describe("every", function () {
+		it("should execute asynchronous every (array)", function (done) {
+			safe.every([1, 3, 5, 7, 9], function (i, cb) {
+				setTimeout(function () {
+					cb(i%2);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, true);
+				done();
+			});
+		});
+
+		it("should execute asynchronous every (array, limit)", function (done) {
+			safe.everyLimit([1, 3, 4, 7, 9], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(i%2);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, false);
+				done();
+			});
+		});
+
+		it("should execute asynchronous every series (array)", function (done) {
+			var execute = 0;
+
+			safe.everySeries([1, 3, 4, 7, 9], function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(i%2);
+				}, randomTime());
+			}, function (res) {
+				assert.deepEqual(res, false);
+				done();
+			});
 		});
 	});
 
