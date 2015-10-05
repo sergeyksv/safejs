@@ -641,11 +641,11 @@ describe("safe", function () {
 						cb(null, "Tailor");
 					}, randomTime());
 				}],
-				"0": function (cb) {
+				"0": [function (cb) {
 					setTimeout(function () {
 						cb(null, "Tinker");
 					}, randomTime());
-				}
+				}]
 			}, function (err, result) {
 				if (result["0"] !== "Tinker" ||
 					result["1"] !== "Tailor" ||
@@ -1486,9 +1486,7 @@ describe("safe", function () {
 				done();
 			});
 		});
-	});
 
-	describe("forever", function () {
 		it("should execute forever until without errback (ensure async)", function (done) {
 			var a = 0;
 
