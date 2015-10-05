@@ -1286,17 +1286,48 @@ describe("safe", function () {
 		it("should few times retry to execute function", function (done) {
 			var i = 0;
 
-			safe.retry(function (cb) {
+			safe.retry(5, function (cb, res) {
 				return new Promise(function (resolve, reject) {
+					if (i)
+						assert.equal(res.err, "need more retry " + i);
+
 					i += 1;
 
 					if (i !== 5)
-						reject(new Error("need more retry"));
+						reject("need more retry " + i);
 					else
 						resolve("done");
 				});
-			}, safe.sure(done, function (result) {
-				assert.equal(result, "done");
+			}, safe.sure(done, function (res) {
+				assert.equal(res.result, "done");
+				assert.equal(i, 5);
+				done();
+			}));
+		});
+
+		it("should few times retry to execute function (early done)", function (done) {
+			var i = 0,
+				sync = false;
+
+			safe.retry({times: 10, interval: 5}, function (cb, res) {
+				if (sync) {
+					return done(new Error("Wrong behavior"));
+				}
+
+				if (i)
+					assert.equal(res.err, "need more retry " + i);
+
+				i += 1;
+
+				sync = true;
+				if (i !== 3)
+					cb("need more retry " + i);
+				else
+					cb(null, "done");
+				sync = false;
+			}, safe.sure(done, function (res) {
+				assert.equal(res.result, "done");
+				assert.equal(i, 3);
 				done();
 			}));
 		});
@@ -1434,7 +1465,6 @@ describe("safe", function () {
 						a += 1;
 					});
 				}, safe.sure(done, function () {
-					console.log(a);
 					assert.equal(a, 5);
 					done();
 				}));
@@ -1488,11 +1518,17 @@ describe("safe", function () {
 		});
 
 		it("should execute forever until without errback (ensure async)", function (done) {
-			var a = 0;
+			var a = 0,
+				sync = false;
 
 			safe.forever(function (next) {
+				if (sync)
+					return done(new Error("Wrong behavior"));
+
+				sync = true;
 				++a;
 				next(a === 2000 ? "exit" : null);
+				sync = false;
 			}, function (err) {
 				assert.equal(err, "exit");
 				assert.equal(a, 2000);
@@ -1597,13 +1633,18 @@ describe("safe", function () {
 
 	describe("utils", function () {
 		it("ensure to async", function (done) {
-			var a = 5000;
+			var a = 2000, sync = false;
 			var arr = new Array(a);
 			for (var i = 0; i < arr.length; i += 1)
 				arr[i] = i;
 
 			safe.map(arr, safe.ensureAsync(function (i, cb) {
+				if (sync)
+					return done(new Error("Wrong behavior"));
+
+				sync = true;
 				cb(null, i);
+				sync = false;
 			}), safe.sure(done, function (result) {
 				assert.deepEqual(result, arr);
 				done(null);
