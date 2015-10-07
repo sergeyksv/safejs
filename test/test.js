@@ -1309,7 +1309,7 @@ describe("safe", function () {
 			var i = 0,
 				sync = false;
 
-			safe.retry({times: 10, interval: 5}, function (cb, res) {
+			var retry = safe.retry({times: 10, interval: 5}, function (cb, res) {
 				if (sync) {
 					return done(new Error("Wrong behavior"));
 				}
@@ -1325,11 +1325,13 @@ describe("safe", function () {
 				else
 					cb(null, "done");
 				sync = false;
-			}, safe.sure(done, function (res) {
+			});
+
+			retry(safe.sure(done, function (res) {
 				assert.equal(res.result, "done");
 				assert.equal(i, 3);
 				done();
-			}));
+			}), {err: "need more retry " + i} );
 		});
 	});
 
