@@ -706,20 +706,25 @@ describe("safe", function () {
 			safe.auto({
 				"2": ["1", function (cb, result) {
 					setTimeout(function () {
-						cb(null, null);
+						cb(null, 2);
 					}, randomTime());
 				}],
 				"1": ["0", function (cb, result) {
-					setTimeout(function () {
-						cb(null, null);
-					}, randomTime());
+					throw new Error('exit');
 				}],
 				"0": function (cb) {
-					throw new Error('exit');
+					setTimeout(function () {
+						cb(null, "done");
+					}, randomTime());
 				}
-			}, function (err, result) {
-				done(err ? null : new Error("Wrong behavior"));
-			});
+			}, safe.sure(function (err, result) {
+				if (err && result[0] === "done")
+					done();
+				else
+					done(new Error("Wrong behavior"));
+			}, function () {
+				done(new Error("Wrong behavior"));
+			}));
 		});
 	});
 
