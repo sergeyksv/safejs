@@ -206,38 +206,6 @@ describe("safe", function () {
 			obj.parent_function();
 		});
 	});
-	describe("chain", function () {
-		it("should execute step by step asynchronous functions in chain", function (done) {
-			var a = 0;
-
-			safe.chain(function (cb) {
-					safe.yield(function () {
-						cb(null, 'test');
-					});
-
-					a += 1;
-				})
-				.then(function (test, cb) {
-					assert.equal(test, 'test');
-
-					safe.yield(function () {
-						assert.equal(a, 2);
-						cb(null, a);
-					});
-
-					a += 1;
-				})
-				.then(function (a, cb) {
-					safe.yield(function () {
-						assert.equal(a, 3);
-						cb();
-					});
-
-					a += 1;
-				})
-				.done(done);
-		});
-	});
 	describe("for each", function () {
 		it("should execute asynchronous each (array)", function (done) {
 			var a = 1000;
@@ -726,6 +694,65 @@ describe("safe", function () {
 				done(new Error("Wrong behavior"));
 			}));
 		});
+
+		it("Test limit auto", function (done) {
+			var count = 0;
+
+			safe.auto({
+				"4": ["1", function (cb, result) {
+					++count;
+
+					setTimeout(function () {
+						--count;
+						if (count >= 2)
+							throw new Error("Limit is reach!");
+						cb(null, 2);
+					}, randomTime());
+				}],
+				"3": ["1", function (cb, result) {
+					++count;
+
+					setTimeout(function () {
+						--count;
+						if (count >= 2)
+							throw new Error("Limit is reach!");
+						cb(null, 2);
+					}, randomTime());
+				}],
+				"2": ["1", function (cb, result) {
+					++count;
+
+					setTimeout(function () {
+						--count;
+						if (count >= 2)
+							throw new Error("Limit is reach!");
+						cb(null, 2);
+					}, randomTime());
+				}],
+				"1": ["0", function (cb, result) {
+					++count;
+
+					setTimeout(function () {
+						--count;
+						if (count >= 2)
+							throw new Error("Limit is reach!");
+						cb(null, 1);
+					}, randomTime());
+				}],
+				"0": function (cb) {
+					++count;
+
+					setTimeout(function () {
+						--count;
+						if (count >= 2)
+							throw new Error("Limit is reach!");
+						cb(null, "done");
+					}, randomTime());
+				}
+			}, 2, safe.sure(done, function () {
+				done();
+			}));
+		});
 	});
 
 	describe("queue", function () {
@@ -915,8 +942,7 @@ describe("safe", function () {
 		it("should execute asynchronous map series", function (done) {
 			var execute = 0;
 
-			safe.mapSeries({
-				a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+			safe.mapSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
@@ -1666,6 +1692,29 @@ describe("safe", function () {
 					safe.back(cb, null);
 				}
 			], done);
+		});
+
+		it("asyncify sync fn", function (done) {
+			var parse = safe.asyncify(JSON.parse);
+			parse('{"a":1}', safe.sure(done, function (result) {
+				assert.deepEqual(result, {"a":1});
+				done(null);
+			}));
+		});
+
+		it("asyncify promise", function (done) {
+			var promise = function(str) {
+				return new Promise(function (resolve) {
+					setTimeout(function () {
+						resolve(str);
+					}, randomTime());
+				});
+			};
+
+			safe.asyncify(promise)("done", safe.sure(done, function (result) {
+				assert.deepEqual(result, "done");
+				done();
+			}));
 		});
 	});
 });
