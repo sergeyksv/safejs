@@ -146,11 +146,12 @@ describe("safe", function () {
 				assert("Should not be executed");
 			})(new Error());
 		});
-		it("should convert array to variadic arguments", function () {
-			safe.sure_spread(safe.noop, function (a1, a2, a3) {
+		it("should convert array to variadic arguments", function (done) {
+			safe.sure_spread(done, function (a1, a2, a3) {
 				assert.equal(a1, "apple");
 				assert.equal(a2, "samsung");
 				assert.equal(a3, "nokia");
+				safe.back(done);
 			})(null, ["apple", "samsung", "nokia"]);
 		});
 	});
