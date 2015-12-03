@@ -1713,8 +1713,69 @@ describe("safe", function () {
 			};
 
 			safe.asyncify(promise)("done", safe.sure(done, function (result) {
-				assert.deepEqual(result, "done");
+				assert.equal(result, "done");
 				done();
+			}));
+		});
+
+		it("memoize", function (done) { // test from async lib
+			var call_order = [];
+
+			var fn = function (arg1, arg2, callback) {
+				call_order.push(['fn', arg1, arg2]);
+				safe.yield(function () {
+					call_order.push(['cb', arg1, arg2]);
+					callback(null, arg1 + arg2);
+				});
+			};
+
+			var fn2 = safe.memoize(fn);
+			fn2(1, 2, safe.sure(done, function (result) {
+				assert.equal(result, 3);
+				fn2(1, 2, safe.sure(done, function (result) {
+					assert.equal(result, 3);
+					safe.yield(memoize_done);
+					call_order.push('tick3');
+				}));
+				call_order.push('tick2');
+			}));
+			call_order.push('tick1');
+
+			function memoize_done() {
+				var async_call_order = [
+					['fn',1,2],
+					'tick1',
+					['cb',1,2],
+					'tick2',
+					'tick3'
+				];
+				assert.deepEqual(call_order, async_call_order);
+				done();
+			}
+		});
+
+		it("unmemoize", function (done) { // test from async lib
+			var call_order = [];
+
+			var fn = function (arg1, arg2, callback) {
+				call_order.push(['fn', arg1, arg2]);
+				safe.yield(function () {
+					callback(null, arg1 + arg2);
+				});
+			};
+
+			var fn2 = safe.memoize(fn);
+			var fn3 = safe.unmemoize(fn2);
+			fn3(1, 2, safe.sure(done, function (result) {
+				assert.equal(result, 3);
+				fn3(1, 2, safe.sure(done, function (result) {
+					assert.equal(result, 3);
+					fn3(2, 2, safe.sure(done, function (result) {
+						assert.equal(result, 4);
+						assert.deepEqual(call_order, [['fn',1,2], ['fn',1,2], ['fn',2,2]]);
+						done();
+					}));
+				}));
 			}));
 		});
 	});
