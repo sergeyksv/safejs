@@ -1383,13 +1383,14 @@ describe("safe", function () {
 							reject(new Error("Wrong behavior"));
 
 						setTimeout(function () {
-							resolve();
+							resolve('abc');
 						}, randomTime());
 
 						a += 1;
 					});
-				}, safe.sure(done, function () {
+				}, safe.sure(done, function (res) {
 					assert.equal(a, 5);
+					assert.equal(res, 'abc');
 					done();
 				})
 			);
@@ -1403,7 +1404,7 @@ describe("safe", function () {
 				function (cb) {
 					flag = false;
 					setTimeout(function () {
-						cb();
+						cb(null, 'abc');
 					}, randomTime());
 
 					a += 1;
@@ -1413,8 +1414,9 @@ describe("safe", function () {
 						throw new Error("Wrong behavior");
 
 					return a < 5;
-				}, safe.sure(done, function () {
+				}, safe.sure(done, function (res) {
 					assert.equal(a, 5);
+					assert.equal(res, 'abc');
 					done();
 				}));
 		});
@@ -1438,13 +1440,14 @@ describe("safe", function () {
 							reject(new Error("Wrong behavior"));
 
 						setTimeout(function () {
-							resolve();
+							resolve('abc');
 						}, randomTime());
 
 						a += 1;
 					});
-				}, safe.sure(done, function () {
+				}, safe.sure(done, function (res) {
 					assert.equal(a, 5);
+					assert.equal(res, 'abc');
 					done();
 				})
 			);
@@ -1458,7 +1461,7 @@ describe("safe", function () {
 				function (cb) {
 					flag = false;
 					setTimeout(function () {
-						cb();
+						cb(null, 'abc');
 					}, randomTime());
 
 					a += 1;
@@ -1470,8 +1473,9 @@ describe("safe", function () {
 					setTimeout(function () {
 						cb(null, a < 5);
 					}, randomTime());
-				}, safe.sure(done, function () {
+				}, safe.sure(done, function (res) {
 					assert.equal(a, 5);
+					assert.equal(res, 'abc');
 					done();
 				}));
 		});
@@ -1493,13 +1497,14 @@ describe("safe", function () {
 							reject(new Error("Wrong behavior"));
 
 						setTimeout(function () {
-							resolve();
+							resolve('abc');
 						}, randomTime());
 
 						a += 1;
 					});
-				}, safe.sure(done, function () {
+				}, safe.sure(done, function (res) {
 					assert.equal(a, 5);
+					assert.equal(res, 'abc');
 					done();
 				}));
 		});
@@ -1512,7 +1517,7 @@ describe("safe", function () {
 				function (cb) {
 					flag = false;
 					setTimeout(function () {
-						cb();
+						cb(null, 'abc');
 					}, randomTime());
 
 					a += 1;
@@ -1522,8 +1527,9 @@ describe("safe", function () {
 						throw new Error("Wrong behavior");
 
 					return a === 5;
-				}, safe.sure(done, function () {
+				}, safe.sure(done, function (res) {
 					assert.equal(a, 5);
+					assert.equal(res, 'abc');
 					done();
 				}));
 		});
@@ -1662,6 +1668,53 @@ describe("safe", function () {
 				safe.applyEachSeries([foo, bar]),
 				done
 			);
+		});
+	});
+
+	describe("transform", function () {
+		it("transform without memo", function (done) {
+			safe.transform([1, 2, 3], function(memo, x, v, cb){
+				memo.push(x + 1);
+				cb();
+			}, safe.sure(done, function(result){
+				assert.deepEqual(result, [2, 3, 4]);
+				done();
+			}));
+		});
+
+		it("transform array", function (done) {
+			safe.transform([1, 3, 2], {}, function(memo, v, k, callback){
+				setTimeout(function() {
+					memo[k] = v;
+					callback();
+				}, randomTime());
+			}, safe.sure(done, function(result){
+				assert.deepEqual(result, {0: 1, 1: 3, 2: 2});
+				done();
+			}));
+		});
+
+		it("transform object", function (done) {
+			safe.transform({a: 1, b: 3, c: 2}, {}, function(memo, v, k, callback){
+				setTimeout(function() {
+					memo[k] = v + 1;
+					callback();
+				}, randomTime());
+			}, safe.sure(done, function(result){
+				assert.deepEqual(result, {a: 2, b: 4, c: 3});
+				done();
+			}));
+		});
+
+		it("transform error", function (done) {
+			safe.transform([1, 2, 3], function(memo, v, k, callback){
+				setTimeout(function() {
+					callback('stop');
+				}, randomTime());
+			}, function(err){
+				assert.equal(err, 'stop');
+				done();
+			});
 		});
 	});
 
