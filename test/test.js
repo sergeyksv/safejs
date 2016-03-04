@@ -3,12 +3,6 @@
 if (typeof Promise !== "function")
 	require("es6-promise");
 
-if (typeof Map !== "function")
-	require("es6-map/implement");
-
-if (typeof Set !== "function")
-	require("es6-set/implement");
-
 var assert = require('assert');
 var safe = require('../lib/safe.js');
 
@@ -231,7 +225,8 @@ describe("safe", function () {
 			}));
 		});
 
-		it("should execute asynchronous each (es6-set)", function (done) {
+
+		(typeof Set !== "function" ? it.skip : it)("should execute asynchronous each (es6-set)", function (done) {
 			var a = 0,
 				set = new Set();
 
@@ -314,7 +309,7 @@ describe("safe", function () {
 			}));
 		});
 
-		it("should execute asynchronous each (es6-map)", function (done) {
+		(typeof Map !== "function" ? it.skip : it)("should execute asynchronous each (es6-map)", function (done) {
 			var a = 0,
 				obj = {1: 'a', 2: 'b', 3: 'c'},
 				map = new Map();
