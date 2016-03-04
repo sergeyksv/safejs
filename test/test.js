@@ -3,6 +3,12 @@
 if (typeof Promise !== "function")
 	require("es6-promise");
 
+if (typeof Map !== "function")
+	require("es6-map");
+
+if (typeof Set !== "function")
+	require("es6-set");
+
 var assert = require('assert');
 var safe = require('../lib/safe.js');
 
@@ -225,26 +231,30 @@ describe("safe", function () {
 			}));
 		});
 
+		it("should execute asynchronous each (es6-set)", function (done) {
+			var a = 0,
+				set = new Set();
+
+			set.add(3);
+			set.add(2);
+			set.add(1);
+
+			safe.eachOf(set, function (i, cb) {
+				setTimeout(function () {
+					a += i;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				assert.equal(a, 6);
+				done();
+			}));
+		});
+
 		it("should execute asynchronous each (empty array)", function (done) {
 			var a = 0,
 				arr = [];
 
 			safe.each(arr, function (i, cb) {
-				setTimeout(function () {
-					a++;
-					cb();
-				}, randomTime());
-			}, safe.sure(done, function (result) {
-				assert.equal(a, 0);
-				done();
-			}));
-		});
-
-		it("should execute asynchronous each (empty object)", function (done) {
-			var a = 0,
-				obj = {};
-
-			safe.forEachOf(obj, function (i, key, cb) {
 				setTimeout(function () {
 					a++;
 					cb();
@@ -285,6 +295,42 @@ describe("safe", function () {
 				}, randomTime());
 			}, safe.sure(done, function (result) {
 				assert.equal(a, 0);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous each (empty object)", function (done) {
+			var a = 0,
+				obj = {};
+
+			safe.forEachOf(obj, function (i, key, cb) {
+				setTimeout(function () {
+					a++;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				assert.equal(a, 0);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous each (es6-map)", function (done) {
+			var a = 0,
+				obj = {1: 'a', 2: 'b', 3: 'c'},
+				map = new Map();
+
+			map.set('a', 1);
+			map.set('b', 2);
+			map.set('c', 3);
+
+			safe.eachOf(map, function (i, k, cb) {
+				assert.equal(obj[i], k);
+				setTimeout(function () {
+					a += i;
+					cb();
+				}, randomTime());
+			}, safe.sure(done, function (result) {
+				assert.equal(a, 6);
 				done();
 			}));
 		});

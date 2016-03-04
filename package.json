@@ -29,7 +29,9 @@
 	"dependencies": {},
 	"devDependencies": {
 		"mocha": "~2.3.x",
-		"es6-promise": "~3.x.x"
+		"es6-promise": "~3.x.x",
+		"es6-map": "0.1.x",
+		"es6-set": "0.1.x"
 	},
 	"scripts": {
 		"test": "mocha -bR spec ./test/test.js"
