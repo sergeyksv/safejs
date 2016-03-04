@@ -4,10 +4,10 @@ if (typeof Promise !== "function")
 	require("es6-promise");
 
 if (typeof Map !== "function")
-	require("es6-map");
+	require("es6-map/implement");
 
 if (typeof Set !== "function")
-	require("es6-set");
+	require("es6-set/implement");
 
 var assert = require('assert');
 var safe = require('../lib/safe.js');
