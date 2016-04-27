@@ -1872,5 +1872,73 @@ describe("safe", function () {
 				}));
 			}));
 		});
+
+		it("reflect", function (done) { // test from async lib
+			safe.parallel([
+				safe.reflect(function(cb){
+					setTimeout(function () {
+						cb('error', 1);
+					}, randomTime());
+				}),
+				safe.reflect(function(cb){
+					setTimeout(function () {
+						cb(null, 2);
+					}, randomTime());
+				}),
+				safe.reflect(function(cb){
+					setTimeout(function () {
+						cb('error_3', 3);
+					}, randomTime());
+				}),
+				safe.reflect(function(cb){
+					setTimeout(function () {
+						cb(null, 4);
+					}, randomTime());
+				})
+			],
+			safe.sure(done, function(results){
+				assert.deepEqual(results, [
+					{ error: 'error' },
+					{ value: 2 },
+					{ error: 'error_3' },
+					{ value: 4 }
+				]);
+				done();
+			}));
+		});
+
+		it("reflectAll", function (done) { // test from async lib
+			safe.parallel(safe.reflectAll([
+				function(cb){
+					setTimeout(function () {
+						cb('error', 1);
+					}, randomTime());
+				},
+				function(cb){
+					setTimeout(function () {
+						cb(null, 2);
+					}, randomTime());
+				},
+				function(cb){
+					setTimeout(function () {
+						cb('error_3', 3);
+					}, randomTime());
+				},
+				function(cb){
+					setTimeout(function () {
+						cb(null, 4);
+					}, randomTime());
+				}
+			]),
+			safe.sure(done, function(results){
+				assert.deepEqual(results, [
+					{ error: 'error' },
+					{ value: 2 },
+					{ error: 'error_3' },
+					{ value: 4 }
+				]);
+				done();
+			}));
+		});
 	});
 });
