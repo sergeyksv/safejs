@@ -311,7 +311,7 @@ describe("safe", function () {
 
 		(typeof Map !== "function" ? it.skip : it)("should execute asynchronous each (es6-map)", function (done) {
 			var a = 0,
-				obj = {1: 'a', 2: 'b', 3: 'c'},
+				arr = [['a', 1], ['b', 2], ['c', 3]],
 				map = new Map();
 
 			map.set('a', 1);
@@ -319,9 +319,9 @@ describe("safe", function () {
 			map.set('c', 3);
 
 			safe.eachOf(map, function (i, k, cb) {
-				assert.equal(obj[i], k);
+				assert.deepEqual(arr[k], i);
 				setTimeout(function () {
-					a += i;
+					a += i[1];
 					cb();
 				}, randomTime());
 			}, safe.sure(done, function (result) {
