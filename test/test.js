@@ -1881,9 +1881,11 @@ describe("safe", function () {
 					}, randomTime());
 				}),
 				safe.reflect(function(cb){
-					setTimeout(function () {
-						cb(null, 2);
-					}, randomTime());
+					return new Promise(function (resolve, reject) {
+						setTimeout(function () {
+							resolve(2);
+						}, randomTime());
+					});
 				}),
 				safe.reflect(function(cb){
 					setTimeout(function () {
@@ -1915,9 +1917,11 @@ describe("safe", function () {
 					}, randomTime());
 				},
 				function(cb){
-					setTimeout(function () {
-						cb(null, 2);
-					}, randomTime());
+					return new Promise(function (resolve, reject) {
+						setTimeout(function () {
+							resolve(2);
+						}, randomTime());
+					});
 				},
 				function(cb){
 					setTimeout(function () {
