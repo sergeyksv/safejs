@@ -4,9 +4,7 @@ if (typeof Promise !== "function")
 	require("es6-promise");
 
 var assert = require('assert');
-var safe = require('../lib/safe.js');
-
-/*global describe, it*/
+var safe = require('../app.js');
 
 var randomTime = function () {
 	return 4 + Math.round(2 * Math.random());
@@ -215,10 +213,10 @@ describe("safe", function () {
 				arr[i] = i;
 
 			safe.each(arr, function (i, cb) {
-				setTimeout(function () {
+				//setTimeout(function () {
 					a--;
 					cb();
-				}, randomTime());
+				//}, randomTime());
 			}, safe.sure(done, function (result) {
 				assert.equal(a, 0);
 				done();
@@ -234,7 +232,7 @@ describe("safe", function () {
 			set.add(2);
 			set.add(1);
 
-			safe.eachOf(set, function (i, cb) {
+			safe.eachOf(set, function (i, k, cb) {
 				setTimeout(function () {
 					a += i;
 					cb();
@@ -336,7 +334,7 @@ describe("safe", function () {
 			for (var i = 0; i < a; i += 1)
 				obj[i] = i;
 
-			safe.forEachOfLimit(obj, 20, function (i, cb) {
+			safe.forEachOfLimit(obj, 20, function (i, k, cb) {
 				setTimeout(function () {
 					a--;
 					cb();
@@ -370,7 +368,7 @@ describe("safe", function () {
 			var a = 0,
 				execute;
 
-			safe.forEachOfSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+			safe.forEachOfSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, k, cb) {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
@@ -727,14 +725,12 @@ describe("safe", function () {
 						cb(null, "done");
 					}, randomTime());
 				}
-			}, safe.sure(function (err, result) {
+			}, function (err, result) {
 				if (err && result[0] === "done")
 					done();
 				else
 					done(new Error("Wrong behavior"));
-			}, function () {
-				done(new Error("Wrong behavior"));
-			}));
+			});
 		});
 
 		it("Test limit auto", function (done) {
