@@ -418,10 +418,10 @@ var _controlFlow = function (flow, arr, callback) {
 		_run(function (cb) {
 			return item(cb);
 		}, function (err, ...args) {
-			if (args === 0) {
-				results[key] = null;
-			} else {
+			if (args.length) {
 				results[key] = args.length === 1 ? args[0] : args;
+			} else {
+				results[key] = null;
 			}
 
 			cb(err);
@@ -1109,7 +1109,13 @@ var _reflect = function (fn) {
 				return callback(null, { error: error });
 			}
 
-			var value = args.length === 1 ? args[0] : args;
+			var value;
+
+			if (args.length) {
+				value = args.length === 1 ? args[0] : args;
+			} else {
+				value = null;
+			}
 
 			callback(null, {value: value});
 		});

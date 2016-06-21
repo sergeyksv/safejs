@@ -529,6 +529,9 @@ describe("safe", function () {
 
 		it("should execute asynchronous functions in parallel", function (done) {
 			safe.parallel({
+				"3": function (cb) {
+					safe.back(cb);
+				},
 				"2": function (cb) {
 					setTimeout(function () {
 						cb(null, "last");
@@ -548,6 +551,7 @@ describe("safe", function () {
 				}
 			}, safe.sure(done, function (result) {
 				assert.deepEqual(result, {
+					'3': null,
 					'2': 'last',
 					'1': 'middle',
 					'0': 'first'
