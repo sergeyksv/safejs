@@ -362,7 +362,7 @@ var _sure_spread = function (callback, fn) {
 			return callback(err);
 
 		try {
-			fn.apply(this, args[0]);
+			return fn.apply(this, args[0]);
 		} catch (err) {
 			return callback(err);
 		}
@@ -371,7 +371,7 @@ var _sure_spread = function (callback, fn) {
 
 var _spread = function (fn) {
 	return function (arr) {
-		fn.apply(this, arr);
+		return fn.apply(this, arr);
 	};
 };
 

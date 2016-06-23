@@ -122,11 +122,16 @@ describe("safe", function () {
 	});
 	describe("spread", function () {
 		it("should convert array to variadic arguments", function () {
-			safe.spread(function (a1, a2, a3) {
+			var arr = ["apple", "samsung", "nokia"];
+
+			var result = safe.spread(function (a1, a2, a3) {
 				assert.equal(a1, "apple");
 				assert.equal(a2, "samsung");
 				assert.equal(a3, "nokia");
-			})(["apple", "samsung", "nokia"]);
+				return arr.join(", ");
+			})(arr);
+
+			assert.equal(result, arr.join(", "));
 		});
 	});
 	describe("sure_spread", function () {
