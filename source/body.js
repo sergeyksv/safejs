@@ -1196,6 +1196,7 @@ var _queue = function (worker, concurrency) {
 _queue.prototype.saturated = _noop;
 _queue.prototype.empty = _noop;
 _queue.prototype.drain = _noop;
+_queue.prototype.error = _noop;
 
 _queue.prototype.kill = function () {
 	this.drain = _noop;
@@ -1342,6 +1343,10 @@ _seriesQ.prototype.__execute = _priorQ.prototype.__execute = function () {
 			});
 
 			task.callback.apply(task, args);
+
+			if (args[0]) {
+				this.error(args[0], task.data);
+			}
 
 			if (this.tasks.length + this.__workers === 0)
 				this.drain();

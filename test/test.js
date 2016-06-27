@@ -804,9 +804,16 @@ describe("safe", function () {
 
 	describe("queue", function () {
 		it("queue", function (done) {
+			var error = new Error('for test'),
+				hasError = 0;
+
 			var queue = safe.queue(function (task, cb) {
 				return task.cmd(function (err, res) {
-					assert.equal(res, "test");
+					if (task.name != 9)
+						assert.equal(res, "test");
+					else
+						assert.equal(err, error);
+
 					cb(err);
 				});
 			}, 1);
@@ -815,25 +822,34 @@ describe("safe", function () {
 
 			queue.drain = function () {
 				assert.equal(counter, 1000);
+				assert.equal(hasError, 1);
 				done();
+			};
+
+			queue.error = function(err, task) {
+				assert.equal(err, error);
+				hasError++;
 			};
 
 			var arr = [];
 
 			for (var i = 0; i < 1000; i++) {
 				arr.push({
+					name: i,
 					cmd: function (cb) {
 						safe.yield(function () {
 							counter++;
-							cb(null, "test");
+
+							if (counter === 10)
+								cb(error);
+							else
+								cb(null, "test");
 						});
 					}
 				});
 
 				if (arr.length === 10) {
-					queue.push(arr, function (err) {
-						if (err) throw err;
-					});
+					queue.push(arr);
 					arr = [];
 				}
 			}
@@ -842,6 +858,8 @@ describe("safe", function () {
 		});
 
 		it("priorityQueue", function (done) {
+			var hasError = 0;
+
 			var queue = safe.priorityQueue(function (task, cb) {
 				return task.cmd(function (err, res) {
 					assert.equal(res, "test");
@@ -869,7 +887,13 @@ describe("safe", function () {
 				if (!sature)
 					return done(new Error("Wrong behavior"));
 
+				assert.equal(hasError, 0);
+
 				done();
+			};
+
+			queue.error = function(err, task) {
+				hasError++;
 			};
 
 			queue.push({
