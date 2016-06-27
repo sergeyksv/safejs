@@ -1435,6 +1435,35 @@ describe("safe", function () {
 				done();
 			}), {err: "need more retry " + i} );
 		});
+
+		it("should few times retry to execute function (interval function)", function (done) {
+			var i = 0,
+				sync = false;
+
+			var retry = safe.retry({times: 10, interval: function (count) { return count*i; }}, function (cb, res) {
+				if (sync) {
+					return done(new Error("Wrong behavior"));
+				}
+
+				if (i)
+					assert.equal(res.err, "need more retry " + i);
+
+				i += 1;
+
+				sync = true;
+				if (i !== 3)
+					cb("need more retry " + i);
+				else
+					cb(null, "done");
+				sync = false;
+			});
+
+			retry(safe.sure(done, function (res) {
+				assert.equal(res.result, "done");
+				assert.equal(i, 3);
+				done();
+			}), {err: "need more retry " + i} );
+		});
 	});
 
 	describe("do-while", function () {

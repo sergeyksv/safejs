@@ -1038,7 +1038,8 @@ var _retry = function (obj, fn, callback) {
 
 	var error,
 		times,
-		interval = 0;
+		interval = 0,
+		intervalFunc = (count) => interval;
 
 	if (_isFunction(obj)) {
 		callback = fn;
@@ -1046,25 +1047,15 @@ var _retry = function (obj, fn, callback) {
 		times = 5;
 	} else if (_isObject(obj)) {
 		times = parseInt(obj.times) || 5;
-		interval = parseInt(obj.interval) || 0;
+		if (_isFunction(obj.interval))
+			intervalFunc = obj.interval;
+		else
+			interval = parseInt(obj.interval) || interval;
 	} else {
 		times = parseInt(times) || 5;
 	}
 
 	function task(wcb, data) {
-		var cbi = (function () {
-			if (interval > 0)
-				return function (cb) {
-					setTimeout(function () {
-						cb();
-					}, interval);
-				};
-
-			return function (cb) {
-				cb();
-			};
-		})();
-
 		_eachSeries(Array(times), function (item, key, cb) {
 			_run(function (cb) {
 				return fn(cb, data);
@@ -1073,7 +1064,13 @@ var _retry = function (obj, fn, callback) {
 				data = {err: error, result: res};
 
 				if (err && key < times - 1) {
-					cbi(cb);
+					let int = intervalFunc(key + 1);
+
+					if (int > 0) {
+						setTimeout(cb, int);
+					} else {
+						cb();
+					}
 				} else {
 					cb(!err);
 				}
@@ -1537,9 +1534,7 @@ var safe = {
 		return new _cargoQ(worker, payload);
 	},
 
-	retry: function (times, fn, callback) {
-		return _retry(times, fn, callback);
-	},
+	retry: _retry,
 
 	times: function (times, fn, callback) {
 		_times(_eachLimit(times), times, fn, callback);
