@@ -194,7 +194,7 @@ var _once = function(callback) {
 
 		var cb = callback;
 		callback = null;
-		cb.apply(this, args);
+		return cb.apply(this, args);
 	};
 };
 
@@ -205,7 +205,7 @@ var _only_once = function (callback) {
 
 		var cb = callback;
 		callback = null;
-		cb.apply(this, args);
+		return cb.apply(this, args);
 	};
 };
 
@@ -313,9 +313,9 @@ var _sure = function (callback, fn) {
 			return _back(callback, null, fn);
 
 		try {
-			fn.apply(this, args);
+			return fn.apply(this, args);
 		} catch (err) {
-			return callback(err);
+			callback(err);
 		}
 	};
 };
@@ -331,9 +331,9 @@ var _trap = function (callback, fn) {
 		}
 
 		try {
-			fn.apply(this, args);
+			return fn.apply(this, args);
 		} catch (err) {
-			return callback(err);
+			callback(err);
 		}
 	};
 };
@@ -346,9 +346,9 @@ var _wrap = function (fn, callback) {
 		args.push(callback);
 
 		try {
-			fn.apply(this, args);
+			return fn.apply(this, args);
 		} catch (err) {
-			return callback(err);
+			callback(err);
 		}
 	};
 };
@@ -364,7 +364,7 @@ var _sure_spread = function (callback, fn) {
 		try {
 			return fn.apply(this, args[0]);
 		} catch (err) {
-			return callback(err);
+			callback(err);
 		}
 	};
 };
@@ -402,9 +402,9 @@ var _async = function (_this, fn, ...args) {
 		args.push(callback);
 
 		try {
-			_this[fn].apply(_this, args);
+			return _this[fn].apply(_this, args);
 		} catch (err) {
-			return callback(err);
+			callback(err);
 		}
 	};
 };
@@ -1132,6 +1132,20 @@ var _reflect = function (fn) {
 	};
 };
 
+var _race = function (tasks, callback) {
+	if (!_isArray(tasks))
+		return _throwError(_typedErrors[0], callback);
+
+	callback = _once(callback);
+
+	if (!tasks.length)
+		return callback();
+
+	_arEach(tasks, function (task) {
+		task(callback);
+	});
+};
+
 var _queue = function (worker, concurrency) {
 	if (Object.defineProperties) {
 		Object.defineProperties(this, {
@@ -1574,5 +1588,7 @@ var safe = {
 	reflect: _reflect,
 	reflectAll: function (tasks) {
 		return _armap(tasks, _reflect);
-	}
+	},
+
+	race: _race
 };

@@ -1764,6 +1764,34 @@ describe("safe", function () {
 		});
 	});
 
+	describe("race", function () {
+		it("First result", function (done) {
+			var arr = [];
+			for (var i = 0; i < 3; i++)
+				arr.push(function (cb) {
+					setTimeout(function () { cb(null, i); }, 10 - i*2);
+				});
+
+			safe.race(arr, safe.sure_result(done, function(result){
+				assert.equal(result, 3);
+			}));
+		});
+
+		it("First error", function (done) {
+			var arr = [];
+			for (var i = 0; i < 3; i++)
+				arr.push(function (cb) {
+					setTimeout(function () { cb(i === 3, i); }, 10 - i*2);
+				});
+
+			safe.race(arr, safe.sure(function (err) {
+				if (!err)
+					return done(new Error("Wrong behavior"));
+				done();
+			}, done));
+		});
+	});
+
 	describe("utils", function () {
 		it("ensure to async", function (done) {
 			var a = 2000, sync = false;
