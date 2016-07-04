@@ -8,8 +8,8 @@ var UNDEFINED = 'undefined',
 	_keys = Object.keys,
 	_hop = Object.prototype.hasOwnProperty,
 	_toString = Object.prototype.toString,
-	_isPromise = function (p) {
-		return p && _isFunction(p.then) && _isFunction(p.catch);
+	_isPromiseLike = function (p) {
+		return p && _isFunction(p.then);
 	},
 	_typedErrors = [
 		"Array or Object are required",
@@ -231,7 +231,7 @@ var _run = function (fn, callback) {
 	try {
 		let res = fn(callback);
 
-		if (_isPromise(res)) {
+		if (_isPromiseLike(res)) {
 			res.then( (result) => callback(null, result), (error) => callback(error) );
 		}
 	} catch (err) {
@@ -249,7 +249,7 @@ var _asyncify = function (func) {
 
 		_run( (cb) => {
 			var res = func.apply(this, args);
-			return _isPromise(res) ? res : cb(null, res);
+			return _isPromiseLike(res) ? res : cb(null, res);
 		}, callback);
 	};
 };
@@ -1089,7 +1089,7 @@ var _reflect = function (fn) {
 
 		var res = fn.apply(this, args);
 
-		if (_isPromise(res)) {
+		if (_isPromiseLike(res)) {
 			res.then(function (value) {
 				callback(null, {value: value});
 			}, function (error) {
