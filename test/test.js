@@ -1995,7 +1995,7 @@ describe("safe", function () {
 			}));
 		});
 
-		it("reflectAll", function (done) { // test from async lib
+		it("reflectAll (array)", function (done) { // test from async lib
 			safe.parallel(safe.reflectAll([
 				function(cb){
 					setTimeout(function () {
@@ -2027,6 +2027,42 @@ describe("safe", function () {
 					{ error: 'error_3' },
 					{ value: 4 }
 				]);
+				done();
+			}));
+		});
+
+		it("reflectAll (object)", function (done) { // test from async lib
+			safe.parallel(safe.reflectAll({
+				one: function(cb){
+					setTimeout(function () {
+						cb('error', 1);
+					}, randomTime());
+				},
+				two: function(cb){
+					return new Promise(function (resolve, reject) {
+						setTimeout(function () {
+							resolve(2);
+						}, randomTime());
+					});
+				},
+				three: function(cb){
+					setTimeout(function () {
+						cb('error_3', 3);
+					}, randomTime());
+				},
+				four: function(cb){
+					setTimeout(function () {
+						cb(null, 4);
+					}, randomTime());
+				}
+			}),
+			safe.sure(done, function(results){
+				assert.deepEqual(results, {
+					one: { error: 'error' },
+					two: { value: 2 },
+					three: { error: 'error_3' },
+					four: { value: 4 }
+				});
 				done();
 			}));
 		});
