@@ -7,7 +7,7 @@ var assert = require('assert');
 var safe = require('../app.js');
 
 var randomTime = function () {
-	return 4 + Math.round(2 * Math.random());
+	return 4 + Math.round(3 * Math.random());
 };
 
 describe("safe", function () {
@@ -217,17 +217,16 @@ describe("safe", function () {
 			for (var i = 0; i < arr.length; i += 1)
 				arr[i] = i;
 
-			safe.each(arr, function (i, cb) {
-				//setTimeout(function () {
+			safe.forEach(arr, function (i, cb) {
+				setTimeout(function () {
 					a--;
 					cb();
-				//}, randomTime());
+				}, randomTime());
 			}, safe.sure(done, function (result) {
 				assert.equal(a, 0);
 				done();
 			}));
 		});
-
 
 		(typeof Set !== "function" ? it.skip : it)("should execute asynchronous each (es6-set)", function (done) {
 			var a = 0,
@@ -2107,6 +2106,61 @@ describe("safe", function () {
 				});
 				done();
 			}));
+		});
+	});
+
+	describe("errors", function () {
+		it("Callback already called (run)", function (done) {
+			safe.run(function (cb) {
+				try {
+					cb(null, null);
+					cb(null, null);
+				} catch (err) {
+					assert.equal(err.message, "Callback was already called.");
+					done();
+				}
+			}, safe.noop);
+		});
+
+		it('Exactly two arguments are required (sure)', function (done) {
+			try {
+				safe.sure(safe.noop);
+			} catch (err) {
+				assert.equal(err.message, "Exactly two arguments are required");
+				done();
+			}
+		});
+
+		it('Array is required (each)', function (done) {
+			safe.each({a: 1}, safe.noop, function (err) {
+				assert.equal(err.message, "Array is required");
+				done();
+			});
+		});
+
+		it('Array or Object are required (eachOf)', function (done) {
+			safe.eachOf(1, safe.noop, function (err) {
+				assert.equal(err.message, "Array or Object are required");
+				done();
+			});
+		});
+
+		it('Array or Object are required (map)', function (done) {
+			safe.map("1", safe.noop, function (err) {
+				assert.equal(err.message, "Array or Object are required");
+				done();
+			});
+		});
+
+		it('Function is required (queue)', function (done) {
+			var q = new safe.queue(null, 1);
+
+			try {
+				q.push(null, []);
+			} catch (err) {
+				assert.equal(err.message, "Function is required");
+				done();
+			}
 		});
 	});
 });

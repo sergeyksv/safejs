@@ -32,7 +32,7 @@ var _isObject = function (obj) {
 	if (obj === null)
 		return false;
 
-	var type = typeof obj;
+	const type = typeof obj;
 	return type === OBJECT || type === FUNCTION;
 };
 
@@ -541,7 +541,7 @@ var _eachLimit = function (limit) {
 var _eachSeries = _eachLimit(1),
 	_eachUnlim = _eachLimit(Infinity);
 
-var wrap2to3 = function (fn) {
+var wrap3to2 = function (fn) {
 	return (item, key, cb) => fn(item, cb);
 };
 
@@ -550,7 +550,7 @@ var _forEach = function (arr, fn, callback) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
-	_eachUnlim(arr, wrap2to3(fn), callback);
+	_eachUnlim(arr, wrap3to2(fn), callback);
 };
 
 var _forEachLimit = function (arr, limit, fn, callback) {
@@ -558,7 +558,7 @@ var _forEachLimit = function (arr, limit, fn, callback) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
-	_eachLimit(limit)(arr, wrap2to3(fn), callback);
+	_eachLimit(limit)(arr, wrap3to2(fn), callback);
 };
 
 var _forEachSeries = function (arr, fn, callback) {
@@ -566,7 +566,7 @@ var _forEachSeries = function (arr, fn, callback) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
-	_eachSeries(arr, wrap2to3(fn), callback);
+	_eachSeries(arr, wrap3to2(fn), callback);
 };
 
 var _forEachOf = function (obj, fn, callback) {
@@ -606,7 +606,7 @@ var _map = function (flow, obj, fn, callback) {
 	flow(obj, (item, key, cb) => {
 		var i = idx++;
 
-		_run( (cb) => fn(item, cb) , (err, res) => {
+		_run( (cb) => fn(item, cb), (err, res) => {
 			result[i] = res;
 			cb(err);
 		});
@@ -640,7 +640,7 @@ var _mapValues = function (flow, obj, fn, callback) {
 	var result = {};
 
 	flow(obj, (item, key, cb) => {
-		_run( (cb) => fn(item, cb) , (err, res) => {
+		_run( (cb) => fn(item, cb), (err, res) => {
 			result[key] = res;
 			cb(err);
 		});
@@ -788,7 +788,7 @@ var _detect = function (flow, arr, fn, callback) {
 	var result;
 
 	flow(arr, (item, key, cb) => {
-		_run( (cb) => fn(item, cb) , (is) => {
+		_run( (cb) => fn(item, cb), (is) => {
 			if (is)
 				result = item;
 
@@ -917,7 +917,7 @@ var _auto = function (obj, limit, callback) {
 			starter[k] = true;
 			++running;
 
-			_run_once( (cb) => fn(cb, result) , (err, ...args) => {
+			_run_once( (cb) => fn(cb, result), (err, ...args) => {
 				--qnt;
 				--running;
 
@@ -1185,12 +1185,15 @@ var _queue = function (worker, concurrency) {
 
 	if (concurrency == null) {
 		concurrency = 1;
-	} else if (concurrency === 0) {
-		return _throwError('Concurrency must not be zero');
-	} else {
-		this.concurrency = parseInt(concurrency);
 	}
 
+	concurrency = parseInt(concurrency);
+
+	if (concurrency === 0) {
+		return _throwError('Concurrency must not be zero');
+	}
+
+	this.concurrency = concurrency;
 	this.started = false;
 	this.paused = false;
 };
@@ -1253,7 +1256,6 @@ _queue.prototype.__insert = function (data, pos, callback) {
 		return this.drain();
 
 	var arlen = data.length,
-		tlen = this.tasks.length,
 		i = 0,
 		arr = _armap(data, (task) => {
 			return {
@@ -1263,35 +1265,34 @@ _queue.prototype.__insert = function (data, pos, callback) {
 			};
 		});
 
-	if (tlen) {
-		if (this instanceof _priorQ) {
-			let firstidx = tlen ? this.tasks[0].priority : 0,
-				lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
+	if (this instanceof _priorQ) {
+		let tlen = this.tasks.length,
+			firstidx = tlen ? this.tasks[0].priority : 0,
+			lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
 
-			if (pos > firstidx) {
-				this.tasks.unshift.apply(this.tasks, arr);
-			} else {
-				this.tasks.push.apply(this.tasks, arr);
-			}
-
-			if (firstidx >= pos && pos < lastidx) {
-				this.tasks.sort(function (b, a) { // reverse sort
-					return a.priority - b.priority;
-				});
-			}
+		if (pos > firstidx) {
+			this.tasks.unshift.apply(this.tasks, arr);
 		} else {
-			if (pos) {
-				this.tasks.unshift.apply(this.tasks, arr);
-			} else {
-				this.tasks.push.apply(this.tasks, arr);
-			}
+			this.tasks.push.apply(this.tasks, arr);
+		}
+
+		if (firstidx >= pos && pos < lastidx) {
+			this.tasks.sort(function (b, a) { // reverse sort
+				return a.priority - b.priority;
+			});
 		}
 	} else {
-		this.tasks = arr;
+		if (pos) {
+			this.tasks.unshift.apply(this.tasks, arr);
+		} else {
+			this.tasks.push.apply(this.tasks, arr);
+		}
 	}
 
-	for (; i < arlen && !this.paused; i++) {
-		this.__execute();
+	for (; i < arlen; i++) {
+		if (this.__execute() === false) {
+			break;
+		}
 	}
 };
 
@@ -1325,21 +1326,70 @@ _seriesQ.prototype.unshift = function (data, callback) {
 };
 
 _seriesQ.prototype.__execute = _priorQ.prototype.__execute = function () {
-	if (!this.paused && this.__workers < this.concurrency && this.tasks.length !== 0) {
-		let task = this.tasks.shift();
-		this.__workersList.push(task);
+	if (this.paused || this.__workers >= this.concurrency || this.tasks.length === 0)
+		return false;
 
-		if (this.tasks.length === 0)
-			this.empty();
+	var task = this.tasks.shift();
+	this.__workersList.push(task);
 
-		++this.__workers;
+	if (this.tasks.length === 0)
+		this.empty();
 
-		if (this.__workers === this.concurrency)
-			this.saturated();
+	var data = task.data;
 
-		let cb = _only_once( (...args) => {
-			--this.__workers;
+	++this.__workers;
 
+	if (this.__workers === this.concurrency)
+		this.saturated();
+
+	_run_once( (cb) => {
+		return this.__worker.call(task, data, cb);
+	}, (...args) => {
+		--this.__workers;
+
+		_arEach(this.__workersList, (worker, index) => {
+			if (worker === task) {
+				this.__workersList.splice(index, 1);
+				return false;
+			}
+		});
+
+		task.callback.apply(task, args);
+
+		if (args[0]) {
+			this.error(args[0], data);
+		}
+
+		if (this.idle())
+			this.drain();
+
+		this.__execute();
+	});
+};
+
+_cargoQ.prototype.__execute = function () {
+	if (this.paused || this.__workers >= this.concurrency || this.tasks.length === 0)
+		return false;
+
+	var tasks = this.tasks.splice(0, this.payload);
+	this.__workersList.push.apply(this.__workersList, tasks);
+
+	if (this.tasks.length === 0)
+		this.empty();
+
+	var data = _armap(tasks, "data");
+
+	++this.__workers;
+
+	if (this.__workers === this.concurrency)
+		this.saturated();
+
+	_run_once( (cb) => {
+		return this.__worker.call(null, data, cb);
+	}, (...args) => {
+		--this.__workers;
+
+		_arEach(tasks, (task) => {
 			_arEach(this.__workersList, (worker, index) => {
 				if (worker === task) {
 					this.__workersList.splice(index, 1);
@@ -1348,61 +1398,13 @@ _seriesQ.prototype.__execute = _priorQ.prototype.__execute = function () {
 			});
 
 			task.callback.apply(task, args);
-
-			if (args[0]) {
-				this.error(args[0], task.data);
-			}
-
-			if (this.idle())
-				this.drain();
-
-			this.__execute();
 		});
 
-		_run_once( (cb) => {
-			return this.__worker.call(task, task.data, cb);
-		}, cb);
-	}
-};
+		if (this.idle())
+			this.drain();
 
-_cargoQ.prototype.__execute = function () {
-	if (!this.paused && this.__workers < this.concurrency && this.tasks.length !== 0) {
-		let tasks = this.tasks.splice(0, this.payload);
-
-		if (this.tasks.length === 0)
-			this.empty();
-
-		let data = _armap(tasks, "data");
-
-		++this.__workers;
-
-		if (this.__workers === this.concurrency)
-			this.saturated();
-
-		let cb = _only_once( (...args) => {
-			--this.__workers;
-
-			_arEach(tasks, (task) => {
-				_arEach(this.__workersList, (worker, index) => {
-					if (worker === task) {
-						this.__workersList.splice(index, 1);
-						return false;
-					}
-				});
-
-				task.callback.apply(task, args);
-			});
-
-			if (this.idle())
-				this.drain();
-
-			this.__execute();
-		});
-
-		_run_once( (cb) => {
-			return this.__worker.call(null, data, cb);
-		}, cb);
-	}
+		this.__execute();
+	});
 };
 
 /* ++++++++++++++++++++++++++ public methods +++++++++++++++++++++++++++ */
