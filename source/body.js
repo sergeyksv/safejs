@@ -630,6 +630,40 @@ var _mapSeries = function (arr, fn, callback) {
 	_map(_eachSeries, arr, fn, callback);
 };
 
+var _mapValues = function (flow, obj, fn, callback) {
+	if (!_isObject(obj)) {
+		return _throwError(_typedErrors[0], callback);
+	}
+
+	callback = _once(callback);
+
+	var result = {};
+
+	flow(obj, (item, key, cb) => {
+		_run( (cb) => fn(item, cb) , (err, res) => {
+			result[key] = res;
+			cb(err);
+		});
+	}, (err) => {
+		if (err)
+			callback(err);
+		else
+			callback(null, result);
+	});
+};
+
+var _mapValuesUnlim = function (arr, fn, callback) {
+	_mapValues(_eachUnlim, arr, fn, callback);
+};
+
+var _mapValuesLimit = function (arr, limit, fn, callback) {
+	_mapValues(_eachLimit(limit), arr, fn, callback);
+};
+
+var _mapValuesSeries = function (arr, fn, callback) {
+	_mapValues(_eachSeries, arr, fn, callback);
+};
+
 var _sortBy = function (flow, arr, fn, callback) {
 	if (!_isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
@@ -1423,6 +1457,10 @@ var safe = {
 	map: _mapUnlim,
 	mapLimit: _mapLimit,
 	mapSeries: _mapSeries,
+
+	mapValues: _mapValuesUnlim,
+	mapValuesLimit: _mapValuesLimit,
+	mapValuesSeries: _mapValuesSeries,
 
 	concat: function (arr, fn, callback) {
 		_concat(_eachUnlim, arr, fn, callback);

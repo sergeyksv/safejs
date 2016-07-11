@@ -1027,6 +1027,48 @@ describe("safe", function () {
 				done();
 			}));
 		});
+
+		it("should execute asynchronous map values (object)", function (done) {
+			safe.mapValues({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				return new Promise(function (resolve, reject) {
+					setTimeout(function () {
+						resolve(i * 2);
+					}, randomTime());
+				});
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, {a: 2, b: 4, c: 6, d: 8, e: 10});
+				done();
+			}));
+		});
+
+		it("should execute asynchronous map values (array, limit)", function (done) {
+			safe.mapValuesLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(null, i * 2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, {0: 2, 1: 4, 2: 6, 3: 8, 4: 10});
+				done();
+			}));
+		});
+
+		it("should execute asynchronous map values series", function (done) {
+			var execute = 0;
+
+			safe.mapValuesSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, i * 2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, {a: 2, b: 4, c: 6, d: 8, e: 10});
+				done();
+			}));
+		});
 	});
 
 	describe("concat", function () {
