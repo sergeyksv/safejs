@@ -4,12 +4,10 @@ if (typeof Promise !== "function")
 	require("es6-promise");
 
 var assert = require('assert');
-var safe = require('../lib/safe.js');
-
-/*global describe, it*/
+var safe = require('../app.js');
 
 var randomTime = function () {
-	return 4 + Math.round(2 * Math.random());
+	return 4 + Math.round(3 * Math.random());
 };
 
 describe("safe", function () {
@@ -124,11 +122,16 @@ describe("safe", function () {
 	});
 	describe("spread", function () {
 		it("should convert array to variadic arguments", function () {
-			safe.spread(function (a1, a2, a3) {
+			var arr = ["apple", "samsung", "nokia"];
+
+			var result = safe.spread(function (a1, a2, a3) {
 				assert.equal(a1, "apple");
 				assert.equal(a2, "samsung");
 				assert.equal(a3, "nokia");
-			})(["apple", "samsung", "nokia"]);
+				return arr.join(", ");
+			})(arr);
+
+			assert.equal(result, arr.join(", "));
 		});
 	});
 	describe("sure_spread", function () {
@@ -214,7 +217,7 @@ describe("safe", function () {
 			for (var i = 0; i < arr.length; i += 1)
 				arr[i] = i;
 
-			safe.each(arr, function (i, cb) {
+			safe.forEach(arr, function (i, cb) {
 				setTimeout(function () {
 					a--;
 					cb();
@@ -225,7 +228,6 @@ describe("safe", function () {
 			}));
 		});
 
-
 		(typeof Set !== "function" ? it.skip : it)("should execute asynchronous each (es6-set)", function (done) {
 			var a = 0,
 				set = new Set();
@@ -234,7 +236,7 @@ describe("safe", function () {
 			set.add(2);
 			set.add(1);
 
-			safe.eachOf(set, function (i, cb) {
+			safe.eachOf(set, function (i, k, cb) {
 				setTimeout(function () {
 					a += i;
 					cb();
@@ -336,7 +338,7 @@ describe("safe", function () {
 			for (var i = 0; i < a; i += 1)
 				obj[i] = i;
 
-			safe.forEachOfLimit(obj, 20, function (i, cb) {
+			safe.forEachOfLimit(obj, 20, function (i, k, cb) {
 				setTimeout(function () {
 					a--;
 					cb();
@@ -370,7 +372,7 @@ describe("safe", function () {
 			var a = 0,
 				execute;
 
-			safe.forEachOfSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+			safe.forEachOfSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, k, cb) {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
@@ -531,6 +533,9 @@ describe("safe", function () {
 
 		it("should execute asynchronous functions in parallel", function (done) {
 			safe.parallel({
+				"3": function (cb) {
+					safe.back(cb);
+				},
 				"2": function (cb) {
 					setTimeout(function () {
 						cb(null, "last");
@@ -550,6 +555,7 @@ describe("safe", function () {
 				}
 			}, safe.sure(done, function (result) {
 				assert.deepEqual(result, {
+					'3': null,
 					'2': 'last',
 					'1': 'middle',
 					'0': 'first'
@@ -727,14 +733,12 @@ describe("safe", function () {
 						cb(null, "done");
 					}, randomTime());
 				}
-			}, safe.sure(function (err, result) {
+			}, function (err, result) {
 				if (err && result[0] === "done")
 					done();
 				else
 					done(new Error("Wrong behavior"));
-			}, function () {
-				done(new Error("Wrong behavior"));
-			}));
+			});
 		});
 
 		it("Test limit auto", function (done) {
@@ -799,9 +803,16 @@ describe("safe", function () {
 
 	describe("queue", function () {
 		it("queue", function (done) {
+			var error = new Error('for test'),
+				hasError = 0;
+
 			var queue = safe.queue(function (task, cb) {
 				return task.cmd(function (err, res) {
-					assert.equal(res, "test");
+					if (task.name != 9)
+						assert.equal(res, "test");
+					else
+						assert.equal(err, error);
+
 					cb(err);
 				});
 			}, 1);
@@ -810,25 +821,34 @@ describe("safe", function () {
 
 			queue.drain = function () {
 				assert.equal(counter, 1000);
+				assert.equal(hasError, 1);
 				done();
+			};
+
+			queue.error = function(err, task) {
+				assert.equal(err, error);
+				hasError++;
 			};
 
 			var arr = [];
 
 			for (var i = 0; i < 1000; i++) {
 				arr.push({
+					name: i,
 					cmd: function (cb) {
 						safe.yield(function () {
 							counter++;
-							cb(null, "test");
+
+							if (counter === 10)
+								cb(error);
+							else
+								cb(null, "test");
 						});
 					}
 				});
 
 				if (arr.length === 10) {
-					queue.push(arr, function (err) {
-						if (err) throw err;
-					});
+					queue.push(arr);
 					arr = [];
 				}
 			}
@@ -837,6 +857,8 @@ describe("safe", function () {
 		});
 
 		it("priorityQueue", function (done) {
+			var hasError = 0;
+
 			var queue = safe.priorityQueue(function (task, cb) {
 				return task.cmd(function (err, res) {
 					assert.equal(res, "test");
@@ -864,7 +886,13 @@ describe("safe", function () {
 				if (!sature)
 					return done(new Error("Wrong behavior"));
 
+				assert.equal(hasError, 0);
+
 				done();
+			};
+
+			queue.error = function(err, task) {
+				hasError++;
 			};
 
 			queue.push({
@@ -995,6 +1023,48 @@ describe("safe", function () {
 				}, randomTime());
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, [2, 4, 6, 8, 10]);
+				done();
+			}));
+		});
+
+		it("should execute asynchronous map values (object)", function (done) {
+			safe.mapValues({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				return new Promise(function (resolve, reject) {
+					setTimeout(function () {
+						resolve(i * 2);
+					}, randomTime());
+				});
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, {a: 2, b: 4, c: 6, d: 8, e: 10});
+				done();
+			}));
+		});
+
+		it("should execute asynchronous map values (array, limit)", function (done) {
+			safe.mapValuesLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(null, i * 2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, {0: 2, 1: 4, 2: 6, 3: 8, 4: 10});
+				done();
+			}));
+		});
+
+		it("should execute asynchronous map values series", function (done) {
+			var execute = 0;
+
+			safe.mapValuesSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, i * 2);
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, {a: 2, b: 4, c: 6, d: 8, e: 10});
 				done();
 			}));
 		});
@@ -1406,6 +1476,35 @@ describe("safe", function () {
 				done();
 			}), {err: "need more retry " + i} );
 		});
+
+		it("should few times retry to execute function (interval function)", function (done) {
+			var i = 0,
+				sync = false;
+
+			var retry = safe.retry({times: 10, interval: function (count) { return count*i; }}, function (cb, res) {
+				if (sync) {
+					return done(new Error("Wrong behavior"));
+				}
+
+				if (i)
+					assert.equal(res.err, "need more retry " + i);
+
+				i += 1;
+
+				sync = true;
+				if (i !== 3)
+					cb("need more retry " + i);
+				else
+					cb(null, "done");
+				sync = false;
+			});
+
+			retry(safe.sure(done, function (res) {
+				assert.equal(res.result, "done");
+				assert.equal(i, 3);
+				done();
+			}), {err: "need more retry " + i} );
+		});
 	});
 
 	describe("do-while", function () {
@@ -1759,6 +1858,34 @@ describe("safe", function () {
 		});
 	});
 
+	describe("race", function () {
+		it("First result", function (done) {
+			var arr = [];
+			for (var i = 0; i < 3; i++)
+				arr.push(function (cb) {
+					setTimeout(function () { cb(null, i); }, 10 - i*2);
+				});
+
+			safe.race(arr, safe.sure_result(done, function(result){
+				assert.equal(result, 3);
+			}));
+		});
+
+		it("First error", function (done) {
+			var arr = [];
+			for (var i = 0; i < 3; i++)
+				arr.push(function (cb) {
+					setTimeout(function () { cb(i === 3, i); }, 10 - i*2);
+				});
+
+			safe.race(arr, safe.sure(function (err) {
+				if (!err)
+					return done(new Error("Wrong behavior"));
+				done();
+			}, done));
+		});
+	});
+
 	describe("utils", function () {
 		it("ensure to async", function (done) {
 			var a = 2000, sync = false;
@@ -1909,7 +2036,7 @@ describe("safe", function () {
 			}));
 		});
 
-		it("reflectAll", function (done) { // test from async lib
+		it("reflectAll (array)", function (done) { // test from async lib
 			safe.parallel(safe.reflectAll([
 				function(cb){
 					setTimeout(function () {
@@ -1943,6 +2070,97 @@ describe("safe", function () {
 				]);
 				done();
 			}));
+		});
+
+		it("reflectAll (object)", function (done) { // test from async lib
+			safe.parallel(safe.reflectAll({
+				one: function(cb){
+					setTimeout(function () {
+						cb('error', 1);
+					}, randomTime());
+				},
+				two: function(cb){
+					return new Promise(function (resolve, reject) {
+						setTimeout(function () {
+							resolve(2);
+						}, randomTime());
+					});
+				},
+				three: function(cb){
+					setTimeout(function () {
+						cb('error_3', 3);
+					}, randomTime());
+				},
+				four: function(cb){
+					setTimeout(function () {
+						cb(null, 4);
+					}, randomTime());
+				}
+			}),
+			safe.sure(done, function(results){
+				assert.deepEqual(results, {
+					one: { error: 'error' },
+					two: { value: 2 },
+					three: { error: 'error_3' },
+					four: { value: 4 }
+				});
+				done();
+			}));
+		});
+	});
+
+	describe("errors", function () {
+		it("Callback already called (run)", function (done) {
+			safe.run(function (cb) {
+				try {
+					cb(null, null);
+					cb(null, null);
+				} catch (err) {
+					assert.equal(err.message, "Callback was already called.");
+					done();
+				}
+			}, safe.noop);
+		});
+
+		it('Exactly two arguments are required (sure)', function (done) {
+			try {
+				safe.sure(safe.noop);
+			} catch (err) {
+				assert.equal(err.message, "Exactly two arguments are required");
+				done();
+			}
+		});
+
+		it('Array is required (each)', function (done) {
+			safe.each({a: 1}, safe.noop, function (err) {
+				assert.equal(err.message, "Array is required");
+				done();
+			});
+		});
+
+		it('Array or Object are required (eachOf)', function (done) {
+			safe.eachOf(1, safe.noop, function (err) {
+				assert.equal(err.message, "Array or Object are required");
+				done();
+			});
+		});
+
+		it('Array or Object are required (map)', function (done) {
+			safe.map("1", safe.noop, function (err) {
+				assert.equal(err.message, "Array or Object are required");
+				done();
+			});
+		});
+
+		it('Function is required (queue)', function (done) {
+			var q = new safe.queue(null, 1);
+
+			try {
+				q.push(null, []);
+			} catch (err) {
+				assert.equal(err.message, "Function is required");
+				done();
+			}
 		});
 	});
 });

@@ -1,9 +1,9 @@
-Starting from version 0.3.0 safejs implements all functions of [Async](https://github.com/caolan/async) and can transparently replace it. For asyncjs functions library adds its error trap capabilities and also contain some optimizations and speed improovements as well as some new functions. We plan to be less conservative for all necessary changes and welcome any contributions.
+Starting from version 0.4.0 safejs implements almost all functions of [Async](https://github.com/caolan/async) and can transparently replace it. For asyncjs functions library adds its error trap capabilities and also contain some optimizations and speed improovements as well as some new functions. We plan to be less conservative for all necessary changes and welcome any contributions.
 
 Initially modules was designed to provide set of handy function to deal with thrown errors, callbacks and
 nodejs alike error passing (first function argument).
 
-The goal is to make code more stable, readable and avoid some routine calls. Idea is inspired in [Step](https://github.com/creationix/step) library which catches thrown errors and convert them into callback function calls. 
+The goal is to make code more stable, readable and avoid some routine calls. Idea is inspired in [Step](https://github.com/creationix/step) library which catches thrown errors and convert them into callback function calls.
 
 [Async](https://github.com/caolan/async) library which appears more handy missing this. With safe library it is easy to plug-in this when required.
 
@@ -22,7 +22,7 @@ it is possible to use `safe.trap_sure(function() {})`
 			// which breaks nodejs server
 			async.forEach(array, function (e, callback2) {
 				some.getSome(e.id, function (err, some) {
-					// BAD: err is not checked 
+					// BAD: err is not checked
 					// .. process some
 					// BAD: boring code
 					callback2();
@@ -63,7 +63,7 @@ it is possible to use `safe.trap_sure(function() {})`
 		}
 
 We also found that in some simple cases safe functions allows to write
-code that does things similar to async.series or async.waterfall in bit 
+code that does things similar to async.series or async.waterfall in bit
 more efficient way (at least as we think). It became possible
 because JavaScript closures are in effect and you not need to think how
 to pass variables from one function to another. In theory async.waterfall should
@@ -71,7 +71,7 @@ help for such case but it has two caveats. First is when one of funtions
 that you used change number of paramaters returned thru callback. Code became
 broken and error is hard to find. Second one is that if result of one step
 is required later then next step you have to pass it thru intermidiate
-steps which makes waterfall behavior fall down to async.series. Check 
+steps which makes waterfall behavior fall down to async.series. Check
 this on examples
 
 #### Classic async.series
@@ -104,7 +104,7 @@ this on examples
 			if (err) callback(new Error("Log-in or password is incorrect")
 				else callback();
 		}))
-		
+
 #### Classic async.waterfall
 		async.waterfall([
 			function (callback) {
@@ -184,7 +184,7 @@ callback as last parameter of wrapped function_
 #### run
 Run function with provided callback. Just help to have better readability.
 Usefull when you need to handle local callback results, even if there are
-errors. 
+errors.
 
 @param {Function} wrapped function
 
@@ -201,7 +201,7 @@ Empty function, does nothing. Sometime useful.
 #### back
 Run provided callback in next tick of event loop. This is what for
 process.nextTick was usually used. However for very strange reason
-starting from node v10 it fails when called recursively. 
+starting from node v10 it fails when called recursively.
 
 To be honest its failry stupid because now process.nextTick became
 useless because will it work or not depends on callee. It was honest
@@ -219,7 +219,7 @@ like:
 with back:
 
 	if (cached)
-		return safe.back(callback,null,cached) 
+		return safe.back(callback,null,cached)
 
 @param {Function} callback
 
@@ -230,7 +230,7 @@ with back:
 #### spread
 Wraps function with several parameters into function that accept array of paramters. Useful to process async.series or async.parallel result calls.
 
-@param {Function} - normal function 
+@param {Function} - normal function
 
 Normal async code:
 
@@ -260,7 +260,7 @@ Normal async code:
 		}
 
 Using safe:
-		
+
 	async.series([
 		safe.async(users,"findOne",{gender:"male"})
 
