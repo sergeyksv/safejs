@@ -640,7 +640,7 @@ var _mapValues = function (flow, obj, fn, callback) {
 	var result = {};
 
 	flow(obj, (item, key, cb) => {
-		_run( (cb) => fn(item, cb), (err, res) => {
+		_run( (cb) => fn(item, key, cb), (err, res) => {
 			result[key] = res;
 			cb(err);
 		});
@@ -1314,7 +1314,7 @@ _inherits(_seriesQ, _queue);
 _inherits(_cargoQ, _queue);
 
 _priorQ.prototype.push = function (data, prior, callback) {
-	this.__insert(data, prior, callback);
+	this.__insert(data, prior || 0, callback);
 };
 
 _seriesQ.prototype.push = _cargoQ.prototype.push = function (data, callback) {
