@@ -1028,7 +1028,7 @@ describe("safe", function () {
 		});
 
 		it("should execute asynchronous map values (object)", function (done) {
-			safe.mapValues({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+			safe.mapValues({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, k, cb) {
 				return new Promise(function (resolve, reject) {
 					setTimeout(function () {
 						resolve(i * 2);
@@ -1041,7 +1041,7 @@ describe("safe", function () {
 		});
 
 		it("should execute asynchronous map values (array, limit)", function (done) {
-			safe.mapValuesLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+			safe.mapValuesLimit([1, 2, 3, 4, 5], 2, function (i, k, cb) {
 				setTimeout(function () {
 					cb(null, i * 2);
 				}, randomTime());
@@ -1054,7 +1054,7 @@ describe("safe", function () {
 		it("should execute asynchronous map values series", function (done) {
 			var execute = 0;
 
-			safe.mapValuesSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+			safe.mapValuesSeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, k, cb) {
 				if (execute)
 					return cb(new Error("Wrong behavior"));
 
