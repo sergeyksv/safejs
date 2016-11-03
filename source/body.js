@@ -9,8 +9,9 @@ var UNDEFINED = 'undefined',
 	_hop = Object.prototype.hasOwnProperty,
 	_toString = Object.prototype.toString,
 	_isPromiseLike = function (p) {
-		return p && _isFunction(p.then);
+		return p && p.then && _isFunction(p.then);
 	},
+	_alreadyError = "Callback was already called.",
 	_typedErrors = [
 		"Array or Object are required",
 		"Array is required",
@@ -29,7 +30,7 @@ var _isArray = Array.isArray || function (arr) {
 };
 
 var _isObject = function (obj) {
-	if (obj === null)
+	if (obj == null)
 		return false;
 
 	const type = typeof obj;
@@ -41,11 +42,14 @@ var _isUndefined = function (val) {
 };
 
 var _isFunction = function (fn) {
-	return typeof fn === FUNCTION || _toString.call(fn) === '[object Function]';
+	return _isObject(fn) && _toString.call(fn) === '[object Function]';
 };
 
 var _arEach = function (arr, task) {
-	for (let i = 0; i < arr.length; i++) {
+	var i = 0,
+		len = arr.length;
+
+	for (; i < len; i++) {
 		if (task(arr[i], i) === false) {
 			break;
 		}
@@ -69,34 +73,49 @@ var _armap = function (arr, fn) {
 	return res;
 };
 
-var _iterator = function (obj) {
+var itarator_array = function (arr) {
 	var i = -1,
-		l,
-		keys;
+		l = arr.length;
 
-	if (_isArray(obj)) {
-		l = obj.length;
-		return () => {
-			++i;
-			return i < l ? {value: obj[i], key: i} : null;
-		};
-	}
+	return () => {
+		return ++i < l ? {value: arr[i], key: i} : null;
+	};
 
-	if (_iteratorSymbol && obj[_iteratorSymbol]) {
-		let iterator = obj[_iteratorSymbol]();
+};
 
-		return () => {
-			var item = iterator.next();
-			return item.done ? null : {value: item.value, key: ++i};
-		};
-	}
+var itarator_symbol = function (obj) {
+	var i = -1,
+		iterator = obj[_iteratorSymbol]();
 
-	keys = _keys(obj);
-	l = keys.length;
+	return () => {
+		var item = iterator.next();
+		return item.done ? null : {value: item.value, key: ++i};
+	};
+
+};
+
+var itarator_obj = function (obj) {
+	var keys = _keys(obj),
+		i = -1,
+		l = keys.length;
+
 	return () => {
 		var k = keys[++i];
 		return i < l ? {value: obj[k], key: k} : null;
 	};
+
+};
+
+var _iterator = function (obj) {
+	if (_isArray(obj)) {
+		return itarator_array(obj);
+	}
+
+	if (_iteratorSymbol && obj[_iteratorSymbol]) {
+		return itarator_symbol(obj);
+	}
+
+	return itarator_obj(obj);
 };
 
 if (typeof setImmediate === UNDEFINED) {
@@ -141,13 +160,13 @@ if (typeof setImmediate === UNDEFINED) {
 }
 
 var _back = function (fn, ...args) {
-	_later( () => fn.apply(this, args) );
+	_later( () => fn(...args) );
 };
 
 var _noop = function () {};
 
 var _throwError = function (text, callback) {
-	var err = _typedErrors.indexOf(text) !== -1 ? new TypeError(text) : new Error(text);
+	var err = new TypeError(text);
 	if (!_isFunction(callback))
 		throw err;
 
@@ -159,7 +178,7 @@ var _argToArr = function () {
 		rest = parseInt(this);
 
 	if (rest !== rest) // check for NaN
-		_throwError('Pass arguments to "safe.args" only through ".apply" method!');
+		throw new Error('Pass arguments to "safe.args" only through ".apply" method!');
 
 	if (len === 0 || rest > len)
 		return [];
@@ -178,10 +197,8 @@ var _doPsevdoAsync = function  (fn) {
 };
 
 var _constant = function (...args) {
-	args.unshift(null);
-
 	return function (callback) {
-		return callback.apply(this, args);
+		return callback(null, ...args);
 	};
 };
 
@@ -194,18 +211,19 @@ var _once = function (callback) {
 
 		var cb = callback;
 		callback = null;
-		return cb.apply(this, args);
+		return cb(...args);
 	};
 };
 
 var _only_once = function (callback) {
 	return function (...args) {
-		if (callback === null)
-			_throwError("Callback was already called.");
+		if (callback === null) {
+			throw new Error(_alreadyError);
+		}
 
 		var cb = callback;
 		callback = null;
-		return cb.apply(this, args);
+		return cb(...args);
 	};
 };
 
@@ -232,15 +250,57 @@ var _run = function (fn, callback) {
 		let res = fn(callback);
 
 		if (_isPromiseLike(res)) {
-			res.then( (result) => callback(null, result), (error) => callback(error) );
+			res.then( (result) => callback(null, result), callback );
 		}
 	} catch (err) {
 		callback(err);
 	}
 };
 
+var _run_unsafe = function (fn, callback) {
+	var res = fn(callback);
+
+	if (_isPromiseLike(res)) {
+		res.then( (result) => callback(null, result), callback );
+	}
+};
+
 var _run_once = function (fn, callback) {
-	_run(fn, _only_once(callback));
+	var getPromise = null;
+
+	var fin = (...args) => {
+		if (callback === null) {
+			if (getPromise) {
+				throw new Error(getPromise);
+			}
+
+			throw new Error(_alreadyError);
+		}
+
+		var cb = callback;
+		callback = null;
+		return cb(...args);
+	};
+
+	try {
+		let res = fn(fin);
+
+		if (_isPromiseLike(res)) {
+			getPromise = "Resolution method is overspecified. Call a callback *or* return a Promise.";
+
+			if (callback === null) {
+				throw new Error(getPromise);
+			}
+
+			res.then( (result) => fin(null, result), fin );
+		}
+	} catch (err) {
+		if (callback === null) {
+			throw err;
+		}
+
+		fin(err);
+	}
 };
 
 var _asyncify = function (func) {
@@ -256,7 +316,7 @@ var _asyncify = function (func) {
 
 var _result = function (callback, fn) {
 	if (!_isFunction(fn) || !_isFunction(callback))
-		return _throwError(_typedErrors[2]);
+		throw new TypeError(_typedErrors[2]);
 
 	return function (...args) {
 		var result;
@@ -277,7 +337,7 @@ var _result = function (callback, fn) {
 
 var _sure_result = function (callback, fn) {
 	if (!_isFunction(fn) || !_isFunction(callback))
-		return _throwError(_typedErrors[2]);
+		throw new TypeError(_typedErrors[2]);
 
 	return function (err, ...args) {
 		if (err) {
@@ -302,7 +362,7 @@ var _sure_result = function (callback, fn) {
 
 var _sure = function (callback, fn) {
 	if (_isUndefined(fn) || !_isFunction(callback))
-		return _throwError(_typedErrors[2]);
+		throw new TypeError(_typedErrors[2]);
 
 	return function (err, ...args) {
 		if (err) {
@@ -321,7 +381,7 @@ var _sure = function (callback, fn) {
 
 var _trap = function (callback, fn) {
 	if (_isUndefined(callback))
-		return _throwError(_typedErrors[2]);
+		throw new TypeError(_typedErrors[2]);
 
 	return function (...args) {
 		if (_isUndefined(fn)) {
@@ -339,7 +399,7 @@ var _trap = function (callback, fn) {
 
 var _wrap = function (fn, callback) {
 	if (_isUndefined(callback))
-		return _throwError(_typedErrors[2]);
+		throw new TypeError(_typedErrors[2]);
 
 	return function (...args) {
 		args.push(callback);
@@ -354,7 +414,7 @@ var _wrap = function (fn, callback) {
 
 var _sure_spread = function (callback, fn) {
 	if (_isUndefined(fn) || !_isFunction(callback))
-		return _throwError(_typedErrors[2]);
+		throw new TypeError(_typedErrors[2]);
 
 	return function (err, ...args) {
 		if (err) {
@@ -415,7 +475,7 @@ var _controlFlow = function (flow, arr, callback) {
 	var result = _isArray(arr) ? Array(arr.length) : {};
 
 	flow(arr, (item, key, cb) => {
-		_run( (cb) => item(cb), (err, ...args) => {
+		_run_unsafe(item, (err, ...args) => {
 			if (args.length) {
 				result[key] = args.length === 1 ? args[0] : args;
 			} else {
@@ -448,11 +508,10 @@ var _executeSeries = function (chain, callback) {
 			let item = iterator();
 
 			if (item === null) {
-				callback.apply(this, arguments);
+				callback(null, ...args);
 			} else {
 				_run_once( (cb) => {
-					args.push(cb);
-					return item.value.apply(this, args);
+					return item.value(...args, cb);
 				}, task);
 			}
 		}
@@ -503,13 +562,13 @@ var _eachLimit = function (limit) {
 			iterator = _iterator(obj),
 			err = false,
 			item,
-			fnw =  (cb) => fn(item.value, item.key, cb);
+			fnw = (cb) => fn(item.value, item.key, cb);
 
 		(function task() {
 			if (done || err)
 				return;
 
-			while (running < limit) {
+			while (running < limit && !err) {
 				item = iterator();
 
 				if (item === null) {
@@ -606,7 +665,7 @@ var _map = function (flow, obj, fn, callback) {
 	flow(obj, (item, key, cb) => {
 		var i = idx++;
 
-		_run( (cb) => fn(item, cb), (err, res) => {
+		_run_unsafe( (cb) => fn(item, cb), (err, res) => {
 			result[i] = res;
 			cb(err);
 		});
@@ -640,7 +699,7 @@ var _mapValues = function (flow, obj, fn, callback) {
 	var result = {};
 
 	flow(obj, (item, key, cb) => {
-		_run( (cb) => fn(item, key, cb), (err, res) => {
+		_run_unsafe( (cb) => fn(item, key, cb), (err, res) => {
 			result[key] = res;
 			cb(err);
 		});
@@ -674,7 +733,7 @@ var _sortBy = function (flow, arr, fn, callback) {
 	var result = Array(arr.length);
 
 	flow(arr, (item, key, cb) => {
-		_run( (cb) => fn(item, cb), (err, res) => {
+		_run_unsafe( (cb) => fn(item, cb), (err, res) => {
 			result[key] = {
 				e: item,
 				i: res
@@ -685,9 +744,7 @@ var _sortBy = function (flow, arr, fn, callback) {
 		if (err)
 			callback(err);
 		else
-			callback(null, _armap(result.sort( (a, b) => {
-				return a.i - b.i;
-			}), "e"));
+			callback(null, _armap(result.sort( (a, b) =>  a.i - b.i ), "e"));
 	});
 };
 
@@ -701,7 +758,7 @@ var _concat = function (flow, arr, fn, callback) {
 	var result = Array(arr.length);
 
 	flow(arr, (item, key, cb) =>  {
-		_run( (cb) => fn(item, cb), function (err, res) {
+		_run_unsafe( (cb) => fn(item, cb), function (err, res) {
 			result[key] = res;
 			cb(err);
 		});
@@ -711,7 +768,7 @@ var _concat = function (flow, arr, fn, callback) {
 		} else {
 			let res = [];
 
-			_arEach(result, (r) => res.push.apply(res, r));
+			_arEach(result, (r) => res.push(...r));
 
 			callback(null, res);
 		}
@@ -740,7 +797,7 @@ var _filter = function (flow, trust, arr, fn, callback) {
 	var result = [];
 
 	flow(arr, (item, key, cb) => {
-		_run( (cb) => fn(item, cb), (err, is) => {
+		_run_unsafe( (cb) => fn(item, cb), (err, is) => {
 			if ((trust && is) || !(trust || is)) {
 				result.push({
 					e: item,
@@ -788,7 +845,7 @@ var _detect = function (flow, arr, fn, callback) {
 	var result;
 
 	flow(arr, (item, key, cb) => {
-		_run( (cb) => fn(item, cb), (is) => {
+		_run_unsafe( (cb) => fn(item, cb), (is) => {
 			if (is)
 				result = item;
 
@@ -803,7 +860,7 @@ var _test = function (flow, trust, arr, fn, callback) {
 	var result = trust;
 
 	flow(arr, (item, key, cb) => {
-		_run( (cb) => fn(item, cb), (is) => {
+		_run_unsafe( (cb) => fn(item, cb), (is) => {
 			if (trust) {
 				if (!is) {
 					result = false;
@@ -870,12 +927,12 @@ var _auto = function (obj, limit, callback) {
 				deps = obj[target[i]];
 
 				if (!deps) {
-					unresolve = "Has inexistant dependency";
+					unresolve = new Error("Has inexistant dependency");
 					return false;
 				}
 
 				if ((deps == key) || (_isArray(deps) && deps.indexOf(key) !== -1)) {
-					unresolve = 'Has nonexistent dependency in ' + deps.join(', ');
+					unresolve = new Error('Has nonexistent dependency in ' + deps.join(', '));
 					return false;
 				}
 			}
@@ -883,7 +940,9 @@ var _auto = function (obj, limit, callback) {
 	});
 
 	if (unresolve) {
-		return _throwError(unresolve, callback);
+		if (_isFunction(callback))
+			return callback(unresolve);
+		throw new Error(unresolve);
 	}
 
 	callback = _once(callback);
@@ -981,7 +1040,7 @@ var _forever = function (fn, callback) {
 };
 
 var _apply = function (fn, ...args) {
-	return (...args2) => fn.apply(this, args.concat(args2));
+	return (...args2) => fn(...args, ...args2);
 };
 
 var _applyEach = function (flow) {
@@ -1011,22 +1070,22 @@ var _memoize = function (fn, hasher) {
 
 	var memoized = (...args) => {
 		var callback = args.pop(),
-			key = hasher.apply(null, args);
+			key = hasher(...args);
 
 		if (_hop.call(memo, key)) {
-			_later( () => callback.apply(null, memo[key]) );
+			_later( () => callback(...memo[key]) );
 		} else if (_hop.call(queues, key)) {
 			queues[key].push(callback);
 		} else {
 			queues[key] = [callback];
-			fn.apply(null, args.concat( (...args2) => {
+			fn(...args, (...args2) => {
 				memo[key] = args2;
 				var q = queues[key];
 				delete queues[key];
 				_arEach(q, (item) => {
-					item.apply(null, args2);
+					item(...args2);
 				});
-			}));
+			});
 		}
 	};
 
@@ -1036,12 +1095,12 @@ var _memoize = function (fn, hasher) {
 };
 
 var _unmemoize = function (fn) {
-	return (...args) => (fn.unmemoized || fn).apply(null, args);
+	return (...args) => (fn.unmemoized || fn)(...args);
 };
 
 var _retry = function (obj, fn, callback) {
 	if (arguments.length < 1 || arguments.length > 3) {
-		return _throwError('Invalid arguments - must be either (task), (task, callback), (times, task) or (times, task, callback)');
+		throw new Error('Invalid arguments - must be either (task), (task, callback), (times, task) or (times, task, callback)');
 	}
 
 	var error,
@@ -1105,14 +1164,14 @@ var _reflect = function (fn) {
 	return function (...args) {
 		var callback = args.pop();
 
-		args.push( (error, ...args) => {
+		args.push( (error, ...args2) => {
 			if (error) {
 				callback(null, { error: error });
 			} else {
 				let value;
 
-				if (args.length) {
-					value = args.length === 1 ? args[0] : args;
+				if (args2.length) {
+					value = args2.length === 1 ? args2[0] : args2;
 				} else {
 					value = null;
 				}
@@ -1148,9 +1207,15 @@ var _race = function (tasks, callback) {
 	}
 };
 
-var _queue = function (worker, concurrency) {
+var _queue = function (worker, concurrency, name) {
 	if (Object.defineProperties) {
 		Object.defineProperties(this, {
+			'name': {
+				enumerable: true,
+				configurable: false,
+				writable: false,
+				value: name
+			},
 			'__worker': {
 				enumerable: false,
 				configurable: false,
@@ -1177,6 +1242,7 @@ var _queue = function (worker, concurrency) {
 			}
 		});
 	} else {
+		this.name = name;
 		this.__worker = worker;
 		this.__workers = 0;
 		this.__workersList = [];
@@ -1190,7 +1256,7 @@ var _queue = function (worker, concurrency) {
 	concurrency = parseInt(concurrency);
 
 	if (concurrency === 0) {
-		return _throwError('Concurrency must not be zero');
+		throw new TypeError('Concurrency must not be zero');
 	}
 
 	this.concurrency = concurrency;
@@ -1243,9 +1309,10 @@ _queue.prototype.workersList =  function () {
 };
 
 _queue.prototype.__insert = function (data, pos, callback) {
-	if (callback != null && typeof callback !== FUNCTION) {
-		return _throwError(_typedErrors[3]);
+	if (callback != null && !_isFunction(callback)) {
+		throw new TypeError(_typedErrors[3]);
 	}
+
 
 	this.started = true;
 
@@ -1255,37 +1322,37 @@ _queue.prototype.__insert = function (data, pos, callback) {
 	if (data.length === 0)
 		return this.drain();
 
+	callback = _isFunction(callback) ? callback : _noop;
+
 	var arlen = data.length,
 		i = 0,
 		arr = _armap(data, (task) => {
 			return {
 				data: task,
 				priority: pos,
-				callback: _only_once(_isFunction(callback) ? callback : _noop)
+				callback: _only_once(callback)
 			};
 		});
 
-	if (this instanceof _priorQ) {
+	if (this.name === "Priority Queue") {
 		let tlen = this.tasks.length,
 			firstidx = tlen ? this.tasks[0].priority : 0,
 			lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
 
 		if (pos > firstidx) {
-			this.tasks.unshift.apply(this.tasks, arr);
+			this.tasks.unshift(...arr);
 		} else {
-			this.tasks.push.apply(this.tasks, arr);
+			this.tasks.push(...arr);
 		}
 
 		if (firstidx >= pos && pos < lastidx) {
-			this.tasks.sort(function (b, a) { // reverse sort
-				return a.priority - b.priority;
-			});
+			this.tasks.sort( (b, a) => a.priority - b.priority ); // reverse sort
 		}
 	} else {
 		if (pos) {
-			this.tasks.unshift.apply(this.tasks, arr);
+			this.tasks.unshift(...arr);
 		} else {
-			this.tasks.push.apply(this.tasks, arr);
+			this.tasks.push(...arr);
 		}
 	}
 
@@ -1297,15 +1364,15 @@ _queue.prototype.__insert = function (data, pos, callback) {
 };
 
 var _priorQ = function (worker, concurrency) {
-	_queue.call(this, worker, concurrency);
+	_queue.call(this, worker, concurrency, 'Priority Queue');
 };
 
 var _seriesQ = function (worker, concurrency) {
-	_queue.call(this, worker, concurrency);
+	_queue.call(this, worker, concurrency, 'Queue');
 };
 
 var _cargoQ = function (worker, payload) {
-	_queue.call(this, worker, 1);
+	_queue.call(this, worker, 1, 'Cargo');
 	this.payload = payload;
 };
 
@@ -1314,7 +1381,7 @@ _inherits(_seriesQ, _queue);
 _inherits(_cargoQ, _queue);
 
 _priorQ.prototype.push = function (data, prior, callback) {
-	this.__insert(data, prior || 0, callback);
+	this.__insert(data, parseInt(prior) || 0, callback);
 };
 
 _seriesQ.prototype.push = _cargoQ.prototype.push = function (data, callback) {
@@ -1354,7 +1421,7 @@ _seriesQ.prototype.__execute = _priorQ.prototype.__execute = function () {
 			}
 		});
 
-		task.callback.apply(task, args);
+		task.callback(...args);
 
 		if (args[0]) {
 			this.error(args[0], data);
@@ -1372,7 +1439,7 @@ _cargoQ.prototype.__execute = function () {
 		return false;
 
 	var tasks = this.tasks.splice(0, this.payload);
-	this.__workersList.push.apply(this.__workersList, tasks);
+	this.__workersList.push(...tasks);
 
 	if (this.tasks.length === 0)
 		this.empty();
@@ -1397,7 +1464,7 @@ _cargoQ.prototype.__execute = function () {
 				}
 			});
 
-			task.callback.apply(task, args);
+			task.callback(...args);
 		});
 
 		if (this.idle())

@@ -499,8 +499,13 @@ describe("safe", function () {
 		it("should execute step by step asynchronous functions in series (catch errors)", function (done) {
 			var already = 0;
 
-			safe.series({
-				"2": function (cb) {
+			safe.series([
+				function (cb) {
+					setTimeout(function () {
+						cb(1);
+					}, randomTime());
+				},
+				function (cb) {
 					already = 1;
 
 					return new Promise(function (resolve, reject) {
@@ -509,23 +514,32 @@ describe("safe", function () {
 						}, randomTime());
 					});
 				},
-				"1": function (cb) {
+				function (cb) {
 					already = 1;
 
 					setTimeout(function () {
 						cb(new Error(2));
 					}, randomTime());
-				},
-				"0": function (cb) {
-					setTimeout(function () {
-						cb(1);
-					}, randomTime());
 				}
-			}, function (err, result) {
+			], function (err, result) {
 				if (already)
 					throw new Error("Wrong behavior");
 
 				already = 1;
+				assert.equal(err, 1);
+				done();
+			});
+		});
+
+		it("should execute step by step asynchronous functions in series (catch errors, sync callback)", function (done) {
+			safe.series([
+				function (cb) {
+					cb(1);
+				},
+				function (cb) {
+					throw new Error("Wrong behavior");
+				}
+			], function (err, result) {
 				assert.equal(err, 1);
 				done();
 			});
@@ -2120,6 +2134,18 @@ describe("safe", function () {
 					done();
 				}
 			}, safe.noop);
+		});
+
+		it("Callback *or* a Promise (run)", function (done) {
+			try {
+				safe.run(function (cb) {
+					cb(null, 1);
+					return Promise.resolve(2);
+				}, safe.sure(done, function () { }));
+			} catch (err) {
+				assert.equal(err.message, "Resolution method is overspecified. Call a callback *or* return a Promise.");
+				done();
+			}
 		});
 
 		it('Exactly two arguments are required (sure)', function (done) {
