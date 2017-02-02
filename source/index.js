@@ -11,9 +11,5 @@
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
 	(factory((global.safe = global.safe || {})));
 }(this, function (exports) {
-	/* body */
-	exports['default'] = safe;
-	_arEach(Object.keys(safe), function (key) {
-		exports[key] = safe[key];
-	});
+/* body */
 }));

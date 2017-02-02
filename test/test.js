@@ -1462,6 +1462,31 @@ describe("safe", function () {
 			}));
 		});
 
+		it("should few times retry to execute function with filter", function (done) {
+			var i = 0;
+			var filter = function (e) {
+				return e !== "need more retry 3";
+			};
+
+			safe.retry({times:  5, errorFilter: filter}, function (cb, res) {
+				return new Promise(function (resolve, reject) {
+					if (i)
+						assert.equal(res.err, "need more retry " + i);
+
+					i += 1;
+
+					if (i !== 5)
+						reject("need more retry " + i);
+					else
+						resolve("done");
+				});
+			}, function (err, res) {
+				assert.equal(err, "need more retry 3");
+				assert.equal(i, 3);
+				done();
+			});
+		});
+
 		it("should few times retry to execute function (early done)", function (done) {
 			var i = 0,
 				sync = false;

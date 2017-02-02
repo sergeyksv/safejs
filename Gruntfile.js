@@ -48,7 +48,7 @@ module.exports = function(grunt) {
 
 	grunt.registerTask('buildapp', function() {
 		var body = grunt.file.read('./lib/safe.js'),
-			modern = grunt.file.read('./source/body.js'),
+			modern = '"use strict";\n' + grunt.file.read('./source/body.js'),
 			lib = grunt.file.read('./source/index.js');
 
 		var es2015 = lib.replace(`/* body */`, body);
@@ -56,8 +56,8 @@ module.exports = function(grunt) {
 
 		grunt.file.write('./lib/safe.js', es2015);
 		grunt.file.write('./lib/safe.modern.js', es6);
-		grunt.log.writeln('✔ '.green + './lib/safe.js');
-		grunt.log.writeln('✔ '.green + './lib/safe.modern.js');
+		grunt.log.writeln(''.green + './lib/safe.js');
+		grunt.log.writeln(''.green + './lib/safe.modern.js');
 	});
 
 	grunt.loadNpmTasks('grunt-contrib-uglify');
