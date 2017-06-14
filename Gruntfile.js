@@ -21,27 +21,7 @@ module.exports = function(grunt) {
 				files: {
 					'./lib/safe.min.js': './lib/safe.js'
 				},
-				options: {
-					preserveComments: false,
-					beautify: {
-						ascii_only: true,
-						quote_keys: true
-					},
-					compress: {
-						hoist_funs: true,
-						join_vars: true,
-						loops: true,
-						conditionals: true,
-						if_return: true,
-						unused: true,
-						comparisons: true,
-						warnings: false
-					},
-					report: 'min',
-					mangle: {
-						except: ['undefined']
-					}
-				}
+				options: {}
 			}
 		}
 	});

@@ -40,7 +40,7 @@ var _isUndefined = function (val) {
 };
 
 var _isFunction = function (fn) {
-	return _isObject(fn) && _toString.call(fn) === '[object Function]';
+	return _toString.call(fn) === '[object Function]';
 };
 
 var _arEach = function (arr, task) {
