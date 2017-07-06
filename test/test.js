@@ -1,7 +1,7 @@
 "use strict";
 
 if (typeof Promise !== "function")
-	require("es6-promise");
+	require('es6-promise').polyfill();
 
 var assert = require('assert');
 var safe = require('../app.js');
@@ -1592,7 +1592,7 @@ describe("safe", function () {
 					if (flag)
 						throw new Error("Wrong behavior");
 
-					return a < 5;
+					return a < 5 ? 1 : 0;
 				}, safe.sure(done, function (res) {
 					assert.equal(a, 5);
 					assert.equal(res, 'abc');
@@ -2204,7 +2204,7 @@ describe("safe", function () {
 		});
 
 		it('Function is required (queue)', function (done) {
-			var q = new safe.queue(null, 1);
+			var q = safe.queue(null, 1);
 
 			try {
 				q.push(null, []);

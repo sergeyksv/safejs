@@ -7,10 +7,6 @@ var UNDEFINED = 'undefined',
 	_iteratorSymbol = typeof Symbol === 'function' && Symbol.iterator,
 	_keys = Object.keys,
 	_hop = Object.prototype.hasOwnProperty,
-	_toString = Object.prototype.toString,
-	_isPromiseLike = function (p) {
-		return p && p.then && _isFunction(p.then);
-	},
 	_alreadyError = "Callback was already called.",
 	_typedErrors = [
 		"Array or Object are required",
@@ -23,75 +19,75 @@ var UNDEFINED = 'undefined',
 	};
 
 /* +++++++++++++++++++++++++ private functions +++++++++++++++++++++++++ */
-var _isArray = Array.isArray || function (arr) {
-	return _toString.call(arr) === '[object Array]';
-};
+var _isArray = Array.isArray || ((arr) => {
+	return Object.prototype.toString.call(arr) === '[object Array]';
+});
 
-var _isObject = function (obj) {
-	if (obj == null)
+var _isObject = (obj) => {
+	if (obj === null)
 		return false;
 
 	const type = typeof obj;
 	return type === OBJECT || type === FUNCTION;
 };
 
-var _isUndefined = function (val) {
+var _isUndefined = (val) => {
 	return val === undefined;
 };
 
-var _isFunction = function (fn) {
-	return _toString.call(fn) === '[object Function]';
+var _isFunction = (fn) => {
+	return typeof fn === 'function';
 };
 
-var _arEach = function (arr, task) {
-	var i = 0,
-		len = arr.length;
-
-	for (; i < len; i++) {
-		if (task(arr[i], i) === false) {
-			break;
-		}
-	}
+var _isPromiseLike = (p) => {
+	return p && _isFunction(p.then);
 };
 
-var _byData = function (item) {
+var _byData = (item) => {
 	return item ? item['data'] : undefined;
 };
 
-var itarator_array = function (arr) {
+var itarator_array = (arr) => {
 	var i = -1,
 		l = arr.length;
 
-	return () => {
-		return ++i < l ? {value: arr[i], key: i} : null;
+	return {
+		next: () => {
+			i++;
+			return i < l ? { value: arr[i], key: i, done: false } : { done: true };
+		}
 	};
-
 };
 
-var itarator_symbol = function (obj) {
+var itarator_symbol = (obj) => {
 	var i = -1,
 		iterator = obj[_iteratorSymbol]();
 
-	return () => {
-		var item = iterator.next();
-		return item.done ? null : {value: item.value, key: ++i};
+	return {
+		next: () => {
+			i++;
+			var item = iterator.next();
+			return item.done ? { done: true } : { value: item.value, key: i, done: false };
+		}
 	};
 
 };
 
-var itarator_obj = function (obj) {
+var itarator_obj = (obj) => {
 	var keys = _keys(obj),
 		i = -1,
 		l = keys.length;
 
-	return () => {
-		var k = keys[++i];
-		return i < l ? {value: obj[k], key: k} : null;
+	return {
+		next: () => {
+			i++;
+			var k = keys[i];
+			return i < l ? { value: obj[k], key: k, done: false } : { done: true };
+		}
 	};
-
 };
 
-var _iterator = function (obj) {
+var _iterator = (obj) => {
 	if (_isArray(obj)) {
 		return itarator_array(obj);
 	}
@@ -104,7 +100,7 @@ var _iterator = function (obj) {
 };
 
 
-var _back = (function () {
+var _back = ( () => {
 	if (typeof setImmediate === UNDEFINED) {
 		if (typeof process === UNDEFINED) {
 			if (typeof Image === FUNCTION) { // browser polyfill
@@ -146,9 +142,9 @@ var _back = (function () {
 	};
 })();
 
-var _noop = function () {};
+var _noop = () => {};
 
-var _throwError = function (text, callback) {
+var _throwError = (text, callback) => {
 	var err = new TypeError(text);
 	if (!_isFunction(callback))
 		throw err;
@@ -156,8 +152,8 @@ var _throwError = function (text, callback) {
 	callback(err);
 };
 
-var _argToArr = function () {
-	var len = arguments.length,
+var _argToArr = function (...args) {
+	var len = args.length,
 		rest = parseInt(this);
 
 	if (rest !== rest) // check for NaN
@@ -169,26 +165,26 @@ var _argToArr = function () {
 	var args = Array(len - rest);
 
 	for (let i = rest; i < len; i++) {
-		args[i - rest] = i < 0 ? null : arguments[i];
+		args[i - rest] = i < 0 ? null : args[i];
 	}
 
 	return args;
 };
 
-var _doPsevdoAsync = function  (fn) {
+var _doPsevdoAsync = (fn) => {
 	return (cb) => cb(null, fn());
 };
 
-var _constant = function (...args) {
-	return function (callback) {
+var _constant = (...args) => {
+	return (callback) => {
 		return callback(null, ...args);
 	};
 };
 
-var _once = function (callback) {
+var _once = (callback) => {
 	callback = callback || null;
 
-	return function (...args) {
+	return (...args) => {
 		if (callback === null)
 			return;
 
@@ -198,8 +194,8 @@ var _once = function (callback) {
 	};
 };
 
-var _only_once = function (callback) {
-	return function (...args) {
+var _only_once = (callback) => {
+	return (...args) => {
 		if (callback === null) {
 			throw new Error(_alreadyError);
 		}
@@ -210,7 +206,7 @@ var _only_once = function (callback) {
 	};
 };
 
-var _ensureAsync = function (fn) {
+var _ensureAsync = (fn)  => {
 	return function (...args) {
 		var sync = true;
 		var callback = args.pop();
@@ -228,30 +224,33 @@ var _ensureAsync = function (fn) {
 	};
 };
 
-var _run = function (fn, callback) {
-	try {
-		let res = fn(callback);
+var _run = (fn, callback) => {
+	var res;
 
-		if (_isPromiseLike(res)) {
-			res.then( (result) => callback(null, result), callback );
-		}
+	try {
+		res = fn(callback);
 	} catch (err) {
 		callback(err);
+		return;
 	}
-};
-
-var _run_unsafe = function (fn, callback) {
-	var res = fn(callback);
 
 	if (_isPromiseLike(res)) {
 		res.then( (result) => callback(null, result), callback );
 	}
 };
 
-var _run_once = function (fn, callback) {
-	var getPromise = null;
+var _run_unsafe = (fn, callback) => {
+	const res = fn(callback);
 
-	var fin = (...args) => {
+	if (_isPromiseLike(res)) {
+		res.then( (result) => callback(null, result), callback );
+	}
+};
+
+var _run_once = (fn, callback) => {
+	var getPromise, res;
+
+	const fin = (...args) => {
 		if (callback === null) {
 			if (getPromise) {
 				throw new Error(getPromise);
@@ -262,31 +261,27 @@ var _run_once = function (fn, callback) {
 
 		var cb = callback;
 		callback = null;
-		return cb(...args);
+		cb(...args);
 	};
 
 	try {
-		let res = fn(fin);
-
-		if (_isPromiseLike(res)) {
-			getPromise = "Resolution method is overspecified. Call a callback *or* return a Promise.";
-
-			if (callback === null) {
-				throw new Error(getPromise);
-			}
-
-			res.then( (result) => fin(null, result), fin );
-		}
+		res = fn(fin);
 	} catch (err) {
+		fin(err);
+	}
+
+	if (_isPromiseLike(res)) {
+		getPromise = "Resolution method is overspecified. Call a callback *or* return a Promise.";
+
 		if (callback === null) {
-			throw err;
+			throw new Error(getPromise);
 		}
 
-		fin(err);
+		res.then( (result) => fin(null, result), fin );
 	}
 };
 
-var _asyncify = function (func) {
+var _asyncify = (func) => {
 	return function (...args) {
 		var callback = args.pop();
 
@@ -297,7 +292,7 @@ var _asyncify = function (func) {
 	};
 };
 
-var _result = function (callback, fn) {
+var _result = (callback, fn) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
@@ -318,32 +313,33 @@ var _result = function (callback, fn) {
 	};
 };
 
-var _sure_result = function (callback, fn) {
+var _sure_result = (callback, fn) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
 	return function (err, ...args) {
 		if (err) {
 			callback(err);
-		} else {
-			let result;
-
-			try {
-				result = fn.apply(this, args);
-			} catch (err) {
-				callback(err);
-				return;
-			}
-
-			if (!_isUndefined(result))
-				_back(callback, null, result);
-			else
-				_back(callback, null);
+			return;
 		}
+
+		var result;
+
+		try {
+			result = fn.apply(this, args);
+		} catch (err) {
+			_back(callback, err);
+			return;
+		}
+
+		if (!_isUndefined(result))
+			_back(callback, null, result);
+		else
+			_back(callback, null);
 	};
 };
 
-var _sure = function (callback, fn) {
+var _sure = (callback, fn) => {
 	if (_isUndefined(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
@@ -356,13 +352,13 @@ var _sure = function (callback, fn) {
 			try {
 				return fn.apply(this, args);
 			} catch (err) {
-				callback(err);
+				_back(callback, err);
 			}
 		}
 	};
 };
 
-var _trap = function (callback, fn) {
+var _trap = (callback, fn) => {
 	if (_isUndefined(callback))
 		throw new TypeError(_typedErrors[2]);
 
@@ -375,12 +371,12 @@ var _trap = function (callback, fn) {
 		try {
 			return fn.apply(this, args);
 		} catch (err) {
-			callback(err);
+			_back(callback, err);
 		}
 	};
 };
 
-var _wrap = function (fn, callback) {
+var _wrap = (fn, callback) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
@@ -390,62 +386,50 @@ var _wrap = function (fn, callback) {
 		try {
 			return fn.apply(this, args);
 		} catch (err) {
-			callback(err);
+			_back(callback, err);
 		}
 	};
 };
 
-var _sure_spread = function (callback, fn) {
+var _sure_spread = (callback, fn) => {
 	if (_isUndefined(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
 	return function (err, ...args) {
 		if (err) {
 			callback(err);
-		} else {
-			try {
-				return fn.apply(this, args[0]);
-			} catch (err) {
-				callback(err);
-			}
+			return;
+		}
+
+		try {
+			return fn.apply(this, args[0]);
+		} catch (err) {
+			_back(callback, err);
 		}
 	};
 };
 
-var _spread = function (fn) {
+var _spread = (fn) => {
 	return function (arr) {
 		return fn.apply(this, arr);
 	};
 };
 
-var _inherits = (function () {
-	function ecma3(ctor, superCtor) {
-		function noop() {}
-
-		noop.prototype = superCtor.prototype;
-		ctor.prototype = new noop;
-		ctor.prototype.constructor = superCtor;
-		noop.prototype = null;
-	}
-
-	function ecma5(ctor, superCtor) {
-		ctor.prototype = Object.create(superCtor.prototype, {
-			constructor: {
-				value: ctor,
-				enumerable: false
-			}
-		});
-	}
-
-	return Object.create ? ecma5 : ecma3;
-})();
+var _inherits = (ctor, superCtor) => {
+	ctor.prototype = Object.create(superCtor.prototype, {
+		constructor: {
+			value: ctor,
+			enumerable: false
+		}
+	});
+};
 
 var _async = function (_this, fn, ...args) {
 	return (callback) => {
 		try {
 			return _this[fn].apply(_this, args.concat(callback));
 		} catch (err) {
-			callback(err);
+			_back(callback, err);
 		}
 	};
 };
@@ -485,16 +469,17 @@ var _executeSeries = function (chain, callback) {
 	(function task(err, ...args) {
 		if (err) {
 			callback(err);
-		} else {
-			let item = iterator();
+			return;
+		}
 
-			if (item === null) {
-				callback(null, ...args);
-			} else {
-				_run_once( (cb) => {
-					return item.value(...args, cb);
-				}, task);
-			}
+		const item = iterator.next();
+
+		if (item.done) {
+			callback(null, ...args);
+		} else {
+			_run_once( (cb) => {
+				return item.value(...args, cb);
+			}, task);
 		}
 	})();
 };
@@ -512,14 +497,15 @@ var _reduce = function (arr, memo, fn, callback, direction) {
 	(function task(err, memo) {
 		if (err) {
 			callback(err);
-		} else {
-			let item = iterator();
+			return;
+		}
 
-			if (item === null) {
-				callback(null, memo);
-			} else {
-				_run_once( (cb) => fn(memo, direction ? item.value : arr[len - 1 - item.key], cb), task);
-			}
+		const item = iterator.next();
+
+		if (item.done) {
+			callback(null, memo);
+		} else {
+			_run_once( (cb) => fn(memo, direction ? item.value : arr[len - 1 - item.key], cb), task);
 		}
 	})(null, memo);
 };
@@ -533,44 +519,40 @@ var _foldr = function (arr, memo, fn, callback) {
 };
 
 var _eachLimit = function (limit) {
-	limit = parseInt(limit) || Infinity;
-
 	return (obj, fn, callback) => {
 		callback = _once(callback);
 
 		var running = 0,
-			done = false,
+			stop = false,
 			iterator = _iterator(obj),
-			err = false,
-			item,
-			fnw = (cb) => fn(item.value, item.key, cb);
+			err = false;
 
 		(function task() {
-			if (done || err)
+			if (stop || err)
 				return;
 
 			while (running < limit && !err) {
-				item = iterator();
+				let item = iterator.next();
 
-				if (item === null) {
-					done = true;
+				if (item.done) {
+					stop = true;
 					if (running <= 0) {
-						callback(null);
+						callback();
 					}
-					return;
+					break;
 				}
 
-				++running;
-				_run_once(fnw, (_err) => {
-					--running;
+				running++;
+				_run_once( (cb) => fn(item.value, item.key, cb), (_err) => {
+					running--;
 
 					if (_err) {
 						err = true;
 						callback(_err);
-					} else if (done === false) {
+					} else if (stop === false && running < limit) {
 						task();
-					} else if (done && running <= 0) {
-						callback(null);
+					} else if (stop && running <= 0) {
+						callback();
 					}
 				});
 			}
@@ -581,9 +563,7 @@ var _eachLimit = function (limit) {
 var _eachSeries = _eachLimit(1),
 	_eachUnlim = _eachLimit(Infinity);
 
-var wrap3to2 = function (fn) {
-	return (item, key, cb) => fn(item, cb);
-};
+var wrap3to2 = (fn) => (item, key, cb) => fn(item, cb);
 
 var _forEach = function (arr, fn, callback) {
 	if (!_isArray(arr)) {
@@ -891,12 +871,10 @@ var _auto = function (obj, limit, callback) {
 	if (_isFunction(limit)) {
 		callback = limit;
 		limit = Infinity;
-	} else {
-		limit = parseInt(limit) || Infinity;
 	}
 
 	// check dependencies
-	_arEach(tasks, (key) => {
+	tasks.forEach( (key) => {
 		var target = obj[key];
 
 		if (_isArray(target)) {
@@ -905,12 +883,12 @@ var _auto = function (obj, limit, callback) {
 
 				if (!deps) {
 					unresolve = new Error("Has inexistant dependency");
-					return false;
+					break;
 				}
 
-				if ((deps == key) || (_isArray(deps) && deps.indexOf(key) !== -1)) {
+				if ((deps === key) || (_isArray(deps) && deps.indexOf(key) !== -1)) {
 					unresolve = new Error('Has nonexistent dependency in ' + deps.join(', '));
-					return false;
+					break;
 				}
 			}
 		}
@@ -925,12 +903,8 @@ var _auto = function (obj, limit, callback) {
 	callback = _once(callback);
 
 	(function task() {
-		_arEach(tasks, (k) => {
-			if (stop || running >= limit) {
-				return false;
-			}
-
-			if (starter[k]) {
+		tasks.forEach( (k) => {
+			if (stop || running >= limit || starter[k]) {
 				return;
 			}
 
@@ -954,8 +928,8 @@ var _auto = function (obj, limit, callback) {
 			++running;
 
 			_run_once( (cb) => fn(cb, result), (err, ...args) => {
-				--qnt;
-				--running;
+				qnt--;
+				running--;
 
 				if (stop) {
 					return;
@@ -1059,7 +1033,7 @@ var _memoize = function (fn, hasher) {
 				memo[key] = args2;
 				var q = queues[key];
 				delete queues[key];
-				_arEach(q, (item) => {
+				q.forEach( (item) => {
 					item(...args2);
 				});
 			});
@@ -1188,7 +1162,7 @@ var _race = function (tasks, callback) {
 	if (!tasks.length) {
 		callback();
 	} else {
-		_arEach(tasks, (task) => {
+		tasks.forEach( (task) => {
 			task(callback);
 		});
 	}
@@ -1239,13 +1213,7 @@ var _queue = function (worker, concurrency, name) {
 		this.tasks = [];
 	}
 
-	if (concurrency == null) {
-		concurrency = 1;
-	}
-
-	concurrency = parseInt(concurrency);
-
-	if (concurrency === 0) {
+	if (!concurrency) {
 		throw new TypeError('Concurrency must not be zero');
 	}
 
@@ -1289,7 +1257,7 @@ _queue.prototype.resume = function () {
 	var w = 0,
 		iterator = _iterator(this.tasks);
 
-	for (; w < this.concurrency && iterator() !== null; w++) {
+	for (; w < this.concurrency && iterator.next().done === false; w++) {
 		this.__execute();
 	}
 };
@@ -1329,9 +1297,9 @@ _queue.prototype.__insert = function (data, pos, callback) {
 			lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
 
 		if (pos > firstidx) {
-			this.tasks.unshift.apply(this.tasks, arr);
+			this.tasks.unshift(...arr);
 		} else {
-			this.tasks.push.apply(this.tasks, arr);
+			this.tasks.push(...arr);
 		}
 
 		if (firstidx >= pos && pos < lastidx) {
@@ -1339,9 +1307,9 @@ _queue.prototype.__insert = function (data, pos, callback) {
 		}
 	} else {
 		if (pos) {
-			this.tasks.unshift.apply(this.tasks, arr);
+			this.tasks.unshift(...arr);
 		} else {
-			this.tasks.push.apply(this.tasks, arr);
+			this.tasks.push(...arr);
 		}
 	}
 
@@ -1405,22 +1373,20 @@ _seriesQ.prototype.__execute = _priorQ.prototype.__execute = function () {
 
 	var data = task.data;
 
-	++this.__workers;
+	this.__workers++;
 
 	if (this.__workers === this.concurrency)
 		this.saturated();
 
-	_run_once( (cb) => {
-		return this.__worker.call(task, data, cb);
-	}, (...args) => {
-		--this.__workers;
+	_run_once( (cb) => this.__worker.call(task, data, cb), (...args) => {
+		this.__workers--;
 
-		_arEach(this.__workersList, (worker, index) => {
-			if (worker === task) {
+		for (var index = 0; index < this.__workersList.length; index++) {
+			if (this.__workersList[index] === task) {
 				this.__workersList.splice(index, 1);
-				return false;
+				break;
 			}
-		});
+		}
 
 		task.callback(...args);
 
@@ -1447,23 +1413,21 @@ _cargoQ.prototype.__execute = function () {
 
 	var data = tasks.map(_byData);
 
-	++this.__workers;
+	this.__workers++;
 
 	if (this.__workers === this.concurrency)
 		this.saturated();
 
-	_run_once( (cb) => {
-		return this.__worker.call(null, data, cb);
-	}, (...args) => {
-		--this.__workers;
+	_run_once( (cb) => this.__worker.call(null, data, cb), (...args) => {
+		this.__workers--;
 
-		_arEach(tasks, (task) => {
-			_arEach(this.__workersList, (worker, index) => {
-				if (worker === task) {
+		tasks.forEach( (task) => {
+			for (var index = 0; index < this.__workersList.length; index++) {
+				if (this.__workersList[index] === task) {
 					this.__workersList.splice(index, 1);
-					return false;
+					break;
 				}
-			});
+			}
 
 			task.callback(...args);
 		});
@@ -1477,7 +1441,7 @@ _cargoQ.prototype.__execute = function () {
 
 /* ++++++++++++++++++++++++++ public methods +++++++++++++++++++++++++++ */
 exports['default'] = {
-	noConflict: function () {
+	noConflict: () => {
 		root.safe = _previous;
 		return this;
 	},
@@ -1562,7 +1526,7 @@ exports['default'] = {
 	/**
 	 * @deprecated
 	*/
-	setDebugger: function (fn) {
+	setDebugger: (fn) => {
 		_options._debugger = _isFunction(fn) ? fn : false;
 	},
 
@@ -1801,7 +1765,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	concat: function (arr, fn, callback) {
+	concat: (arr, fn, callback) => {
 		_concat(_eachUnlim, arr, fn, callback);
 	},
 
@@ -1814,7 +1778,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	concatLimit: function (arr, limit, fn, callback) {
+	concatLimit: (arr, limit, fn, callback) => {
 		_concat(_eachLimit(limit), arr, fn, callback);
 	},
 
@@ -1826,7 +1790,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	concatSeries: function (arr, fn, callback) {
+	concatSeries: (arr, fn, callback) => {
 		_concat(_eachSeries, arr, fn, callback);
 	},
 
@@ -1838,7 +1802,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	sortBy: function (arr, fn, callback) {
+	sortBy: (arr, fn, callback) => {
 		_sortBy(_eachUnlim, arr, fn, callback);
 	},
 
@@ -1926,7 +1890,7 @@ exports['default'] = {
 	 * @param {Object|Array|Iterable} tasks
 	 * @param {Function} [callback]
 	*/
-	series:  function (obj, callback) {
+	series: (obj, callback) => {
 		_controlFlow(_eachSeries, obj, callback);
 	},
 
@@ -1937,7 +1901,7 @@ exports['default'] = {
 	 * @param {Object|Array|Iterable} tasks
 	 * @param {Function} [callback]
 	*/
-	parallel: function (obj, callback) {
+	parallel: (obj, callback) => {
 		_controlFlow(_eachUnlim, obj, callback);
 	},
 
@@ -1949,7 +1913,7 @@ exports['default'] = {
 	 * @param {number} limit
 	 * @param {Function} [callback]
 	*/
-	parallelLimit: function (obj, limit, callback) {
+	parallelLimit: (obj, limit, callback) => {
 		_controlFlow(_eachLimit(limit), obj, callback);
 	},
 
@@ -1970,7 +1934,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	whilst: function (test, fn, callback) {
+	whilst: (test, fn, callback) => {
 		_swhile(_doPsevdoAsync(test), fn, false, true, callback);
 	},
 
@@ -1982,7 +1946,7 @@ exports['default'] = {
 	 * @param {Function} test
 	 * @param {Function} [callback]
 	*/
-	doWhilst: function (fn, test, callback) {
+	doWhilst: (fn, test, callback) => {
 		_swhile(_doPsevdoAsync(test), fn, false, false, callback);
 	},
 
@@ -1994,7 +1958,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	during: function (test, fn, callback) {
+	during: (test, fn, callback) => {
 		_swhile(test, fn, false, true, callback);
 	},
 
@@ -2006,7 +1970,7 @@ exports['default'] = {
 	 * @param {Function} test
 	 * @param {Function} [callback]
 	*/
-	doDuring: function (fn, test, callback) {
+	doDuring: (fn, test, callback) => {
 		_swhile(test, fn, false, false, callback);
 	},
 
@@ -2018,7 +1982,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	until: function (test, fn, callback) {
+	until: (test, fn, callback) => {
 		_swhile(_doPsevdoAsync(test), fn, true, true, callback);
 	},
 
@@ -2030,7 +1994,7 @@ exports['default'] = {
 	 * @param {Function} test
 	 * @param {Function} [callback]
 	*/
-	doUntil: function (fn, test, callback) {
+	doUntil: (fn, test, callback) => {
 		_swhile(_doPsevdoAsync(test), fn, true, false, callback);
 	},
 
@@ -2078,7 +2042,7 @@ exports['default'] = {
 	 * @param {Function} worker
 	 * @param {number} [threads]
 	*/
-	queue: function (worker, threads) {
+	queue: (worker, threads) => {
 		return new _seriesQ(worker, threads);
 	},
 
@@ -2089,7 +2053,7 @@ exports['default'] = {
 	 * @param {Function} worker
 	 * @param {number} [threads]
 	*/
-	priorityQueue: function (worker, threads) {
+	priorityQueue: (worker, threads) => {
 		return new _priorQ(worker, threads);
 	},
 
@@ -2100,7 +2064,7 @@ exports['default'] = {
 	 * @param {Function} worker
 	 * @param {number} [payload]
 	*/
-	cargo: function (worker, payload) {
+	cargo: (worker, payload) => {
 		return new _cargoQ(worker, payload);
 	},
 
@@ -2124,7 +2088,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	times: function (times, fn, callback) {
+	times: (times, fn, callback) => {
 		_times(_eachLimit(times), times, fn, callback);
 	},
 
@@ -2137,7 +2101,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	timesLimit: function (times, limit, fn, callback) {
+	timesLimit: (times, limit, fn, callback) => {
 		_times(_eachLimit(limit), times, fn, callback);
 	},
 
@@ -2149,7 +2113,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	timesSeries: function (times, fn, callback) {
+	timesSeries: (times, fn, callback) => {
 		_times(_eachSeries, times, fn, callback);
 	},
 
@@ -2161,7 +2125,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	detect: function (arr, fn, callback) {
+	detect: (arr, fn, callback) => {
 		_detect(_eachUnlim, arr, fn, callback);
 	},
 
@@ -2174,7 +2138,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	detectLimit: function (arr, limit, fn, callback) {
+	detectLimit: (arr, limit, fn, callback) => {
 		_detect(_eachLimit(limit), arr, fn, callback);
 	},
 
@@ -2186,7 +2150,7 @@ exports['default'] = {
 	 * @param {Function} fn
 	 * @param {Function} [callback]
 	*/
-	detectSeries: function (arr, fn, callback) {
+	detectSeries: (arr, fn, callback) => {
 		_detect(_eachSeries, arr, fn, callback);
 	},
 
@@ -2341,14 +2305,14 @@ exports['default'] = {
 	 * @param {Array} tasks
 	 * @returns {Array}
 	*/
-	reflectAll: function (tasks) {
+	reflectAll: (tasks) => {
 		if (_isArray(tasks)) {
 			return tasks.map(_reflect);
 		}
 
 		let result = {};
 
-		_arEach(_keys(tasks), (key) => {
+		_keys(tasks).forEach( (key) => {
 			result[key] = _reflect(tasks[key]);
 		});
 
@@ -2365,6 +2329,6 @@ exports['default'] = {
 	race: _race
 };
 
-Object.keys(exports['default']).forEach(function (key) {
+Object.keys(exports['default']).forEach( (key) => {
 	exports[key] = exports['default'][key];
 });
