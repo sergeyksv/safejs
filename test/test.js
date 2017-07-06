@@ -184,7 +184,7 @@ describe("safe", function () {
 			var a = 0;
 			safe.back(function (err) {
 				done((err != null && a == 1) ? null : new Error("Wrong behavior"));
-			}, new Error());
+			}, new Error(1));
 			a += 1;
 		});
 	});
@@ -961,7 +961,14 @@ describe("safe", function () {
 		});
 
 		it("cargo", function (done) {
+			var iteations = 0,
+				length = 1000,
+				counter = 0;
+
 			var cargo = safe.cargo(function (tasks, cb) {
+				length -= 100;
+				assert.equal(cargo.length(), length);
+				iteations++;
 				safe.each(tasks, function (task, cb) {
 					task.cmd(function (err, res) {
 						assert.equal(res, "test");
@@ -970,16 +977,15 @@ describe("safe", function () {
 				}, cb);
 			}, 100);
 
-			var counter = 0;
-
 			cargo.drain = function () {
+				assert.equal(iteations, 10);
 				assert.equal(counter, 1000);
 				done();
 			};
 
 			var arr = [];
 
-			for (var i = 0; i < 1000; i++) {
+			for (var i = 0; i < length; i++) {
 				arr.push({
 					cmd: function (cb) {
 						safe.yield(function () {
@@ -991,10 +997,9 @@ describe("safe", function () {
 			}
 
 			cargo.push(arr, function (err) {
-				if (err) throw err;
+				if (err)
+					throw (err);
 			});
-
-			assert.equal(cargo.length(), 900);
 		});
 	});
 

@@ -19,10 +19,6 @@ var UNDEFINED = 'undefined',
 	};
 
 /* +++++++++++++++++++++++++ private functions +++++++++++++++++++++++++ */
-var _isArray = Array.isArray || ((arr) => {
-	return Object.prototype.toString.call(arr) === '[object Array]';
-});
-
 var _isObject = (obj) => {
 	if (obj === null)
 		return false;
@@ -88,7 +84,7 @@ var itarator_obj = (obj) => {
 };
 
 var _iterator = (obj) => {
-	if (_isArray(obj)) {
+	if (Array.isArray(obj)) {
 		return itarator_array(obj);
 	}
 
@@ -126,11 +122,13 @@ var _back = ( () => {
 			};
 		}
 
-		return (...args) => {
-			if (!_isFunction(args[0]))
+		return (callback, ...args) => {
+			if (!_isFunction(callback))
 				throw new TypeError(_typedErrors[3]);
 
-			process.nextTick(...args);
+			process.nextTick(() => {
+				callback(...args);
+			});
 		};
 	}
 
@@ -252,6 +250,10 @@ var _run_once = (fn, callback) => {
 
 	const fin = (...args) => {
 		if (callback === null) {
+			if (args[0]) {
+				throw args[0];
+			}
+
 			if (getPromise) {
 				throw new Error(getPromise);
 			}
@@ -267,7 +269,7 @@ var _run_once = (fn, callback) => {
 	try {
 		res = fn(fin);
 	} catch (err) {
-		fin(err);
+		_back(fin, err);
 	}
 
 	if (_isPromiseLike(res)) {
@@ -437,7 +439,7 @@ var _async = function (_this, fn, ...args) {
 var _controlFlow = function (flow, arr, callback) {
 	callback = _once(callback);
 
-	var result = _isArray(arr) ? Array(arr.length) : {};
+	var result = Array.isArray(arr) ? Array(arr.length) : {};
 
 	flow(arr, (item, key, cb) => {
 		_run_unsafe(item, (err, ...args) => {
@@ -485,7 +487,7 @@ var _executeSeries = function (chain, callback) {
 };
 
 var _reduce = function (arr, memo, fn, callback, direction) {
-	if (!_isArray(arr)) {
+	if (!Array.isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
@@ -566,7 +568,7 @@ var _eachSeries = _eachLimit(1),
 var wrap3to2 = (fn) => (item, key, cb) => fn(item, cb);
 
 var _forEach = function (arr, fn, callback) {
-	if (!_isArray(arr)) {
+	if (!Array.isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
@@ -574,7 +576,7 @@ var _forEach = function (arr, fn, callback) {
 };
 
 var _forEachLimit = function (arr, limit, fn, callback) {
-	if (!_isArray(arr)) {
+	if (!Array.isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
@@ -582,7 +584,7 @@ var _forEachLimit = function (arr, limit, fn, callback) {
 };
 
 var _forEachSeries = function (arr, fn, callback) {
-	if (!_isArray(arr)) {
+	if (!Array.isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
@@ -620,7 +622,7 @@ var _map = function (flow, obj, fn, callback) {
 
 	callback = _once(callback);
 
-	var result = _isArray(obj) ? Array(obj.length) : [],
+	var result = Array.isArray(obj) ? Array(obj.length) : [],
 		idx = 0;
 
 	flow(obj, (item, key, cb) => {
@@ -685,7 +687,7 @@ var _mapValuesSeries = function (arr, fn, callback) {
 };
 
 var _sortBy = function (flow, arr, fn, callback) {
-	if (!_isArray(arr)) {
+	if (!Array.isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
@@ -710,7 +712,7 @@ var _sortBy = function (flow, arr, fn, callback) {
 };
 
 var _concat = function (flow, arr, fn, callback) {
-	if (!_isArray(arr)) {
+	if (!Array.isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
@@ -745,7 +747,7 @@ var _times = function (flow, times, fn, callback) {
 };
 
 var _filter = function (flow, trust, arr, fn, callback) {
-	if (!_isArray(arr)) {
+	if (!Array.isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
 	}
 
@@ -877,7 +879,7 @@ var _auto = function (obj, limit, callback) {
 	tasks.forEach( (key) => {
 		var target = obj[key];
 
-		if (_isArray(target)) {
+		if (Array.isArray(target)) {
 			for (let i = 0, deps, len = target.length - 1; i < len; i++) {
 				deps = obj[target[i]];
 
@@ -886,7 +888,7 @@ var _auto = function (obj, limit, callback) {
 					break;
 				}
 
-				if ((deps === key) || (_isArray(deps) && deps.indexOf(key) !== -1)) {
+				if ((deps === key) || (Array.isArray(deps) && deps.indexOf(key) !== -1)) {
 					unresolve = new Error('Has nonexistent dependency in ' + deps.join(', '));
 					break;
 				}
@@ -910,7 +912,7 @@ var _auto = function (obj, limit, callback) {
 
 			var fn, target = obj[k];
 
-			if (_isArray(target)) {
+			if (Array.isArray(target)) {
 				let fin = target.length - 1;
 
 				for (let i = 0; i < fin; i++) {
@@ -925,7 +927,7 @@ var _auto = function (obj, limit, callback) {
 			}
 
 			starter[k] = true;
-			++running;
+			running++;
 
 			_run_once( (cb) => fn(cb, result), (err, ...args) => {
 				qnt--;
@@ -1113,7 +1115,7 @@ var _transform = function (arr, memo, task, callback) {
 	if (arguments.length === 3) {
 		callback = task;
 		task = memo;
-		memo = _isArray(arr) ? [] : {};
+		memo = Array.isArray(arr) ? [] : {};
 	}
 
 	callback = callback || _noop;
@@ -1154,7 +1156,7 @@ var _reflect = function (fn) {
 };
 
 var _race = function (tasks, callback) {
-	if (!_isArray(tasks))
+	if (!Array.isArray(tasks))
 		return _throwError(_typedErrors[0], callback);
 
 	callback = _once(callback);
@@ -1171,8 +1173,8 @@ var _race = function (tasks, callback) {
 /**
  * @class
  */
-var _queue = function (worker, concurrency, name) {
-	if (Object.defineProperties) {
+class _queue {
+	constructor (worker, concurrency, name) {
 		Object.defineProperties(this, {
 			'name': {
 				enumerable: true,
@@ -1201,227 +1203,81 @@ var _queue = function (worker, concurrency, name) {
 			'tasks': {
 				enumerable: false,
 				configurable: false,
-				writable: true,
+				writable: false,
 				value: []
 			}
 		});
-	} else {
-		this.name = name;
-		this.__worker = worker;
-		this.__workers = 0;
-		this.__workersList = [];
-		this.tasks = [];
-	}
 
-	if (!concurrency) {
-		throw new TypeError('Concurrency must not be zero');
-	}
+		concurrency = parseInt(concurrency);
 
-	this.concurrency = concurrency;
-	this.started = false;
-	this.paused = false;
-};
-
-_queue.prototype.saturated = _noop;
-_queue.prototype.empty = _noop;
-_queue.prototype.drain = _noop;
-_queue.prototype.error = _noop;
-
-_queue.prototype.kill = function () {
-	this.drain = _noop;
-	this.tasks = [];
-};
-
-_queue.prototype.length = function () {
-	return this.tasks.length;
-};
-
-_queue.prototype.running = function () {
-	return this.__workers;
-};
-
-_queue.prototype.idle = function () {
-	return this.tasks.length + this.__workers === 0;
-};
-
-_queue.prototype.pause = function () {
-	this.paused = true;
-};
-
-_queue.prototype.resume = function () {
-	if (this.paused === false)
-		return;
-
-	this.paused = false;
-
-	var w = 0,
-		iterator = _iterator(this.tasks);
-
-	for (; w < this.concurrency && iterator.next().done === false; w++) {
-		this.__execute();
-	}
-};
-
-_queue.prototype.workersList =  function () {
-	return this.__workersList;
-};
-
-_queue.prototype.__insert = function (data, pos, callback) {
-	if (callback != null && !_isFunction(callback)) {
-		throw new TypeError(_typedErrors[3]);
-	}
-
-	this.started = true;
-
-	if (!_isArray(data))
-		data = [data];
-
-	if (data.length === 0)
-		return this.drain();
-
-	callback = _isFunction(callback) ? callback : _noop;
-
-	var arlen = data.length,
-		i = 0,
-		arr = data.map( (task) => {
-			return {
-				data: task,
-				priority: pos,
-				callback: _only_once(callback)
-			};
-		});
-
-	if (this.name === "Priority Queue") {
-		let tlen = this.tasks.length,
-			firstidx = tlen ? this.tasks[0].priority : 0,
-			lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
-
-		if (pos > firstidx) {
-			this.tasks.unshift(...arr);
-		} else {
-			this.tasks.push(...arr);
+		if (!concurrency) {
+			throw new TypeError('Concurrency must not be zero');
 		}
 
-		if (firstidx >= pos && pos < lastidx) {
-			this.tasks.sort( (b, a) => a.priority - b.priority ); // reverse sort
+		this.concurrency = concurrency;
+		this.started = false;
+		this.paused = false;
+	}
+
+	__insert (data, pos, callback) {
+		if (callback != null && !_isFunction(callback)) {
+			throw new TypeError(_typedErrors[3]);
 		}
-	} else {
+
+		this.started = true;
+
+		if (!Array.isArray(data))
+			data = [data];
+
+		if (data.length === 0)
+			return this.drain();
+
+		callback = _isFunction(callback) ? callback : _noop;
+
+		var arlen = data.length,
+			i = 0,
+			arr = data.map( (task) => {
+				return {
+					data: task,
+					callback: _only_once(callback)
+				};
+			});
+
 		if (pos) {
 			this.tasks.unshift(...arr);
 		} else {
 			this.tasks.push(...arr);
 		}
-	}
 
-	for (; i < arlen; i++) {
-		if (this.__execute() === false) {
-			break;
-		}
-	}
-};
-
-/**
- * Creates a new priority queue.
- * @class
- */
-var _priorQ = function (worker, concurrency) {
-	_queue.call(this, worker, concurrency, 'Priority Queue');
-};
-
-/**
- * Creates a new queue.
- * @class
- */
-var _seriesQ = function (worker, concurrency) {
-	_queue.call(this, worker, concurrency, 'Queue');
-};
-
-/**
- * Creates a new cargo.
- * @class
- */
-var _cargoQ = function (worker, payload) {
-	_queue.call(this, worker, 1, 'Cargo');
-	this.payload = payload;
-};
-
-_inherits(_priorQ, _queue);
-_inherits(_seriesQ, _queue);
-_inherits(_cargoQ, _queue);
-
-_priorQ.prototype.push = function (data, prior, callback) {
-	this.__insert(data, parseInt(prior) || 0, callback);
-};
-
-_seriesQ.prototype.push = _cargoQ.prototype.push = function (data, callback) {
-	this.__insert(data, false, callback);
-};
-
-_seriesQ.prototype.unshift = function (data, callback) {
-	this.__insert(data, true, callback);
-};
-
-_seriesQ.prototype.__execute = _priorQ.prototype.__execute = function () {
-	if (this.paused || this.__workers >= this.concurrency || this.tasks.length === 0)
-		return false;
-
-	var task = this.tasks.shift();
-	this.__workersList.push(task);
-
-	if (this.tasks.length === 0)
-		this.empty();
-
-	var data = task.data;
-
-	this.__workers++;
-
-	if (this.__workers === this.concurrency)
-		this.saturated();
-
-	_run_once( (cb) => this.__worker.call(task, data, cb), (...args) => {
-		this.__workers--;
-
-		for (var index = 0; index < this.__workersList.length; index++) {
-			if (this.__workersList[index] === task) {
-				this.__workersList.splice(index, 1);
+		for (; i < arlen; i++) {
+			if (this.__execute() === false) {
 				break;
 			}
 		}
+	}
 
-		task.callback(...args);
+	__execute () {
+		if (this.paused || this.__workers >= this.concurrency || this.tasks.length === 0)
+			return false;
 
-		if (args[0]) {
-			this.error(args[0], data);
-		}
+		var task = this.tasks.shift();
+		this.__workersList.push(task);
 
-		if (this.idle())
-			this.drain();
+		if (this.tasks.length === 0)
+			this.empty();
 
-		this.__execute();
-	});
-};
+		var data = task.data;
 
-_cargoQ.prototype.__execute = function () {
-	if (this.paused || this.__workers >= this.concurrency || this.tasks.length === 0)
-		return false;
+		this.__workers++;
 
-	var tasks = this.tasks.splice(0, this.payload);
-	this.__workersList.push.apply(this.__workersList, tasks);
+		if (this.__workers === this.concurrency)
+			this.saturated();
 
-	if (this.tasks.length === 0)
-		this.empty();
+		_run_once( (cb) => {
+			return this.__worker.call(task, data, cb);
+		}, (...args) => {
+			this.__workers--;
 
-	var data = tasks.map(_byData);
-
-	this.__workers++;
-
-	if (this.__workers === this.concurrency)
-		this.saturated();
-
-	_run_once( (cb) => this.__worker.call(null, data, cb), (...args) => {
-		this.__workers--;
-
-		tasks.forEach( (task) => {
 			for (var index = 0; index < this.__workersList.length; index++) {
 				if (this.__workersList[index] === task) {
 					this.__workersList.splice(index, 1);
@@ -1430,14 +1286,200 @@ _cargoQ.prototype.__execute = function () {
 			}
 
 			task.callback(...args);
+
+			if (args[0]) {
+				this.error(args[0], data);
+			}
+
+			if (this.idle())
+				this.drain();
+
+			this.__execute();
 		});
+	}
 
-		if (this.idle())
-			this.drain();
+	push (data, callback) {
+		this.__insert(data, false, callback);
+	}
 
-		this.__execute();
-	});
-};
+	saturated () {}
+
+	empty () {}
+
+	drain () {}
+
+	error () {}
+
+	kill () {
+		delete this.drain;
+		this.tasks.length = 0;
+	}
+
+	length () {
+		return this.tasks.length;
+	}
+
+	running () {
+		return this.__workers;
+	}
+
+	idle () {
+		return this.tasks.length + this.__workers === 0;
+	}
+
+	pause () {
+		this.paused = true;
+	}
+
+	resume () {
+		if (this.paused === false)
+			return;
+
+		this.paused = false;
+
+		var w = 0,
+			iterator = _iterator(this.tasks);
+
+		for (; w < this.concurrency && iterator.next().done === false; w++) {
+			this.__execute();
+		}
+	}
+
+	workersList () {
+		return this.__workersList;
+	}
+}
+
+/**
+ * Creates a new priority queue.
+ * @class
+ */
+class _priorQ extends _queue {
+	constructor (worker, concurrency) {
+		super(worker, concurrency, 'Priority Queue');
+	}
+
+	push (data, prior, callback) {
+		this.__insert(data, prior || 0, callback);
+	}
+
+	__insert (data, prior, callback) {
+		if (callback != null && !_isFunction(callback)) {
+			throw new TypeError(_typedErrors[3]);
+		}
+
+		this.started = true;
+
+		if (!Array.isArray(data))
+			data = [data];
+
+		if (data.length === 0)
+			return this.drain();
+
+		callback = _isFunction(callback) ? callback : _noop;
+
+		var arlen = data.length,
+			i = 0,
+			arr = data.map( (task) => {
+				return {
+					data: task,
+					priority: prior,
+					callback: _only_once(callback)
+				};
+			});
+
+		let tlen = this.tasks.length,
+			firstidx = tlen ? this.tasks[0].priority : 0,
+			lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
+
+		if (prior > firstidx) {
+			this.tasks.unshift(...arr);
+		} else {
+			this.tasks.push(...arr);
+		}
+
+		if (firstidx >= prior && prior < lastidx) {
+			this.tasks.sort( (b, a) => a.priority - b.priority ); // reverse sort
+		}
+
+		for (; i < arlen; i++) {
+			if (this.__execute() === false) {
+				break;
+			}
+		}
+	}
+}
+
+/**
+ * Creates a new queue.
+ * @class
+ */
+class _seriesQ extends _queue {
+	constructor (worker, concurrency) {
+		super(worker, concurrency, 'Queue');
+	}
+
+	unshift (data, callback) {
+		this.__insert(data, true, callback);
+	}
+}
+
+
+/**
+ * Creates a new cargo.
+ * @class
+ */
+ class _cargoQ extends _queue {
+	constructor (worker, payload) {
+		super(worker, 1, 'Cargo');
+
+		payload = parseInt(payload);
+
+		if (!payload) {
+			throw new TypeError('Payload must not be zero');
+		}
+
+		this.payload = payload;
+	}
+
+	__execute () {
+		if (this.paused || this.__workers >= this.concurrency || this.tasks.length === 0)
+			return false;
+
+		var tasks = this.tasks.splice(0, this.payload);
+		this.__workersList.push.apply(this.__workersList, tasks);
+
+		if (this.tasks.length === 0)
+			this.empty();
+
+		var data = tasks.map(_byData);
+
+		this.__workers++;
+
+		if (this.__workers === this.concurrency)
+			this.saturated();
+
+		_run_once( (cb) => this.__worker.call(null, data, cb), (...args) => {
+			this.__workers--;
+
+			tasks.forEach( (task) => {
+				for (var index = 0; index < this.__workersList.length; index++) {
+					if (this.__workersList[index] === task) {
+						this.__workersList.splice(index, 1);
+						break;
+					}
+				}
+
+				task.callback(...args);
+			});
+
+			if (this.idle())
+				this.drain();
+
+			this.__execute();
+		});
+	}
+}
 
 /* ++++++++++++++++++++++++++ public methods +++++++++++++++++++++++++++ */
 exports['default'] = {
@@ -2306,7 +2348,7 @@ exports['default'] = {
 	 * @returns {Array}
 	*/
 	reflectAll: (tasks) => {
-		if (_isArray(tasks)) {
+		if (Array.isArray(tasks)) {
 			return tasks.map(_reflect);
 		}
 
