@@ -700,7 +700,7 @@ describe("safe", function () {
 						cb(null, null);
 					}, randomTime());
 				},
-				"0": ["3", function (cb) {
+				"0": ["1", "3", function (cb) {
 					setTimeout(function () {
 						cb(null, null);
 					}, randomTime());
@@ -866,8 +866,6 @@ describe("safe", function () {
 					arr = [];
 				}
 			}
-
-			assert.equal(queue.length(), 999);
 		});
 
 		it("priorityQueue", function (done) {
@@ -1084,6 +1082,50 @@ describe("safe", function () {
 				}, randomTime());
 			}, safe.sure(done, function (res) {
 				assert.deepEqual(res, {a: 2, b: 4, c: 6, d: 8, e: 10});
+				done();
+			}));
+		});
+	});
+
+	describe("groupBy", function () {
+		it("should execute asynchronous groupBy (object)", function (done) {
+			safe.groupBy({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				return new Promise(function (resolve, reject) {
+					setTimeout(function () {
+						resolve(i % 2 ? 'a' : 'b');
+					}, randomTime());
+				});
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, { a: [ 1, 3, 5 ], b: [ 2, 4 ] });
+				done();
+			}));
+		});
+
+		it("should execute asynchronous groupBy (array, limit)", function (done) {
+			safe.groupByLimit([1, 2, 3, 4, 5], 2, function (i, cb) {
+				setTimeout(function () {
+					cb(null, i % 2 ? 'b' : 'a');
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, { b: [ 1, 3, 5 ], a: [ 2, 4 ] });
+				done();
+			}));
+		});
+
+		it("should execute asynchronous groupBy series", function (done) {
+			var execute = 0;
+
+			safe.groupBySeries({a: 1, b: 2, c: 3, d: 4, e: 5}, function (i, cb) {
+				if (execute)
+					return cb(new Error("Wrong behavior"));
+
+				execute = 1;
+				setTimeout(function () {
+					execute = 0;
+					cb(null, i % 2 ? 'b' : 'a');
+				}, randomTime());
+			}, safe.sure(done, function (res) {
+				assert.deepEqual(res, { b: [ 1, 3, 5 ], a: [ 2, 4 ] });
 				done();
 			}));
 		});
