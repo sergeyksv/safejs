@@ -1076,7 +1076,7 @@ var _memoize = (fn, hasher) => {
 			key = hasher(...args);
 
 		if (_hop.call(memo, key)) {
-			_back( () => callback.apply(null, memo[key]) );
+			_back( () => callback(...memo[key]) );
 		} else if (_hop.call(queues, key)) {
 			queues[key].push(callback);
 		} else {
@@ -1566,7 +1566,7 @@ class _seriesQ extends _queue {
 		this.__isProcessing = true;
 		while (!this.paused && this.__workers < this.concurrency && this.tasks.length) {
 			let tasks = this.tasks.splice(0, this.payload);
-			this.__workersList.push.apply(this.__workersList, tasks);
+			this.__workersList.push(...tasks);
 
 			if (this.tasks.length === 0)
 				this.empty();
