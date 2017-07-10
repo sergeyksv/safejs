@@ -812,6 +812,62 @@ describe("safe", function () {
 			}, 2, safe.sure(done, function () {
 				done();
 			}));
+
+		});
+
+		it("Try each (first success)", function (done) {
+			safe.tryEach([
+				function (cb) {
+					setTimeout(function () {
+						cb(null, 1);
+					}, randomTime());
+				},
+				function (cb) {
+					setTimeout(function () {
+						cb(null, 2);
+					}, randomTime());
+				}
+			], safe.sure(done, function (res) {
+				assert.equal(res, 1);
+				done();
+			}));
+		});
+
+		it("Try each (second success)", function (done) {
+			safe.tryEach([
+				function (cb) {
+					setTimeout(function () {
+						cb(new Error('1'), 1);
+					}, randomTime());
+				},
+				function (cb) {
+					setTimeout(function () {
+						cb(null, 2);
+					}, randomTime());
+				}
+			], safe.sure(done, function (res) {
+				assert.equal(res, 2);
+				done();
+			}));
+		});
+
+		it("Try each (all fails)", function (done) {
+			safe.tryEach([
+				function (cb) {
+					setTimeout(function () {
+						cb(1);
+					}, randomTime());
+				},
+				function (cb) {
+					setTimeout(function () {
+						cb(2);
+					}, randomTime());
+				}
+			], function (err, res) {
+				assert.equal(err, 2);
+				assert.equal(res, undefined);
+				done();
+			});
 		});
 	});
 
@@ -835,7 +891,7 @@ describe("safe", function () {
 
 			queue.drain = function () {
 				assert.equal(counter, 1000);
-				assert.equal(hasError, 1);
+				assert.equal(hasError, 2);
 				done();
 			};
 
@@ -862,7 +918,12 @@ describe("safe", function () {
 				});
 
 				if (arr.length === 10) {
-					queue.push(arr);
+					queue.push(arr, function(err, task) {
+						if (err) {
+							assert.equal(err, error);
+							hasError++;
+						}
+					});
 					arr = [];
 				}
 			}
@@ -881,7 +942,8 @@ describe("safe", function () {
 			queue.pause();
 
 			var arr = [],
-				sature = 0;
+				sature = 0,
+				unsature = 0;
 
 			queue.saturated = function () {
 				if (sature)
@@ -890,6 +952,15 @@ describe("safe", function () {
 				assert.equal(queue.length(), 2);
 
 				sature = 1;
+			};
+
+			queue.unsaturated = function () {
+				if (unsature)
+					return;
+
+				assert.equal(queue.__workers, 1);
+
+				unsature = 1;
 			};
 
 			queue.drain = function () {
