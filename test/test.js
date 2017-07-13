@@ -878,7 +878,7 @@ describe("safe", function () {
 
 			var queue = safe.queue(function (task, cb) {
 				return task.cmd(function (err, res) {
-					if (task.name != 9)
+					if (task.name != 45)
 						assert.equal(res, "test");
 					else
 						assert.equal(err, error);
@@ -890,7 +890,7 @@ describe("safe", function () {
 			var counter = 0;
 
 			queue.drain = function () {
-				assert.equal(counter, 1000);
+				assert.equal(counter, 200);
 				assert.equal(hasError, 2);
 				done();
 			};
@@ -924,9 +924,15 @@ describe("safe", function () {
 							hasError++;
 						}
 					});
-					arr = [];
+					arr.length = 0;
 				}
 			}
+
+			queue.remove(function (item) {
+				return item.name % 5;
+			});
+
+			assert.equal(queue.length(), 200);
 		});
 
 		it("priorityQueue", function (done) {
