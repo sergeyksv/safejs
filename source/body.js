@@ -7,7 +7,7 @@ const UNDEFINED = 'undefined',
 	_previous = root ? root.safe : undefined,
 	_iteratorSymbol = typeof Symbol === FUNCTION && Symbol.iterator,
 	_keys = Object.keys,
-	_MAX = Number.MAX_SAFE_INTEGER,
+	_MAX = Number.MAX_SAFE_INTEGER || Infinity,
 	_hop = Object.prototype.hasOwnProperty,
 	_alreadyError = "Callback was already called.",
 	_typedErrors = [
