@@ -1,3 +1,5 @@
+"use strict";
+
 let undefined;
 
 const UNDEFINED = 'undefined',
@@ -17,7 +19,7 @@ const UNDEFINED = 'undefined',
 		"Function is required"
 	];
 
-	/* +++++++++++++++++++++++++ private functions +++++++++++++++++++++++++ */
+/* +++++++++++++++++++++++++ private functions +++++++++++++++++++++++++ */
 const _isObject = (obj) => {
 	if (obj === null)
 		return false;
@@ -46,7 +48,7 @@ const _isAsyncFunction = (f) => {
 	return f.constructor.name === 'AsyncFunction';
 };
 
-const _itarator_array = (arr) => {
+const _iterator_array = (arr) => {
 	let i = -1;
 
 	return {
@@ -57,7 +59,7 @@ const _itarator_array = (arr) => {
 	};
 };
 
-const _itarator_symbol = (obj) => {
+const _iterator_symbol = (obj) => {
 	let i = -1;
 	const iterator = obj[_iteratorSymbol]();
 
@@ -71,7 +73,7 @@ const _itarator_symbol = (obj) => {
 
 };
 
-const _itarator_obj = (obj) => {
+const _iterator_obj = (obj) => {
 	const keys = _keys(obj),
 		l = keys.length;
 	let i = -1;
@@ -87,14 +89,14 @@ const _itarator_obj = (obj) => {
 
 const _iterator = (obj) => {
 	if (Array.isArray(obj)) {
-		return _itarator_array(obj);
+		return _iterator_array(obj);
 	}
 
 	if (_iteratorSymbol && obj[_iteratorSymbol]) {
-		return _itarator_symbol(obj);
+		return _iterator_symbol(obj);
 	}
 
-	return _itarator_obj(obj);
+	return _iterator_obj(obj);
 };
 
 const _resolvePromise = (pr, callback) => {
@@ -367,14 +369,7 @@ const _concat = (arr, limit, fn, callback) => {
 
 	callback = _once(callback);
 
-	const result = [];
-
-	_eachLimit(arr, limit, (item, key, cb) => {
-		run((cb) => fn(item, cb), (err, res) => {
-			result[key] = res;
-			cb(err);
-		});
-	}, (err) => {
+	_map(arr, limit, fn, (err, result) => {
 		callback(err, [].concat(...result));
 	});
 };
@@ -2402,7 +2397,7 @@ exports['default'] = {
 	setImmediate: back,
 	yield: back,
 	apply,
-	async,
+	async: async,
 	inherits,
 	args: argToArr,
 	ensureAsync,
@@ -2506,4 +2501,8 @@ exports['default'] = {
 
 Object.keys(exports['default']).forEach((key) => {
 	exports[key] = exports['default'][key];
+});
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
 });

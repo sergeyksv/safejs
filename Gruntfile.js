@@ -1,4 +1,4 @@
-module.exports = function(grunt) {
+module.exports = function (grunt) {
 	'use strict';
 
 	require('load-grunt-tasks')(grunt);
@@ -6,40 +6,54 @@ module.exports = function(grunt) {
 	grunt.initConfig({
 		babel: {
 			options: {
-				sourceMap: false,
-				presets: [['es2015', {modules: false}]]
+				sourceMap: false
 			},
-			dist: {
+			es2015: {
 				files: {
-					'./lib/safe.js': './source/body.js'
+					'./lib/safe.js': './lib/safe.modern.js'
+				},
+				options: {
+					presets: [
+						["env", {
+							loose: true,
+							modules: false,
+							forceAllTransforms: true
+						}]
+					]
+				}
+			},
+			minify: {
+				files: {
+					'./lib/safe.min.js': './lib/safe.js',
+					'./lib/safe.modern.min.js': './lib/safe.modern.js'
+				},
+				options: {
+					presets: [
+						["babili", {}]
+					]
 				}
 			}
 		},
-		buildapp: {	},
-		uglify: {
-			all: {
-				files: {
-					'./lib/safe.min.js': './lib/safe.js'
-				},
-				options: {}
-			}
-		}
+		body: {}
 	});
 
-	grunt.registerTask('buildapp', function() {
-		var body = grunt.file.read('./lib/safe.js'),
-			modern = '"use strict";\n' + grunt.file.read('./source/body.js'),
-			lib = grunt.file.read('./source/index.js');
+	grunt.registerTask('body', function () {
+		const body = grunt.file.read('./source/body.js');
 
-		var es2015 = lib.replace(`/* body */`, body);
-		var es6 = lib.replace(`/* body */`, modern);
-
-		grunt.file.write('./lib/safe.js', es2015);
-		grunt.file.write('./lib/safe.modern.js', es6);
-		grunt.log.writeln(''.green + './lib/safe.js');
-		grunt.log.writeln(''.green + './lib/safe.modern.js');
+		grunt.file.write('./lib/safe.modern.js', body);
+		grunt.log.writeln('✓ '.green + './lib/safe.modern.js');
 	});
 
-	grunt.loadNpmTasks('grunt-contrib-uglify');
-	grunt.registerTask('default', ['babel', 'buildapp', 'uglify']);
+	grunt.registerTask('umd', function () {
+		const es6 = grunt.file.read('./lib/safe.modern.js'),
+			es2015 = grunt.file.read('./lib/safe.js'),
+			umd = grunt.file.read('./source/index.js');
+
+		grunt.file.write('./lib/safe.modern.js', umd.replace(`/* body */`, es6));
+		grunt.log.writeln('✓ '.green + './lib/safe.modern.js');
+		grunt.file.write('./lib/safe.js', umd.replace(`/* body */`, es2015));
+		grunt.log.writeln('✓ '.green + './lib/safe.js');
+	});
+
+	grunt.registerTask('default', ['body', 'babel:es2015', 'umd', 'babel:minify']);
 };

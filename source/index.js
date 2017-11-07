@@ -19,9 +19,5 @@
 		global.actual = mod.exports;
 	}
 })(this, function (exports) {
-	/* body */
-
-	Object.defineProperty(exports, "__esModule", {
-		value: true
-	});
+/* body */
 });
