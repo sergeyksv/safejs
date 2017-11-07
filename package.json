@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
-    "babel-preset-babili": "^0.1.4",
+    "babel-minify": "^0.2.0",
     "babel-preset-env": "^1.6.1",
     "es6-promise": "~4.x.x",
     "eslint": "^4.10.0",

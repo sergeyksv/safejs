@@ -29,7 +29,7 @@ module.exports = function (grunt) {
 				},
 				options: {
 					presets: [
-						["babili", {}]
+						["minify", {}]
 					]
 				}
 			}
