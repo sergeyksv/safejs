@@ -160,6 +160,9 @@ const _run = (fn, callback) => {
 	try {
 		res = fn(callback);
 	} catch (err) {
+		if (!err)
+			throw err;
+
 		callback(err);
 		return;
 	}
@@ -1030,6 +1033,9 @@ const run = (fn, callback) => {
 	try {
 		res = fn(fin);
 	} catch (err) {
+		if (!err)
+			throw err;
+
 		back(fin, err);
 	}
 
@@ -1062,6 +1068,9 @@ const result = (callback, fn) => {
 		try {
 			result = fn.apply(this, args);
 		} catch (err) {
+			if (!err)
+				throw err;
+
 			callback(err);
 			return;
 		}
@@ -1097,6 +1106,9 @@ const sure_result = (callback, fn) => {
 		try {
 			result = fn.apply(this, args);
 		} catch (err) {
+			if (!err)
+				throw err;
+
 			back(callback, err);
 			return;
 		}
@@ -1130,6 +1142,9 @@ const sure = (callback, fn) => {
 			try {
 				return fn.apply(this, args);
 			} catch (err) {
+				if (!err)
+					throw err;
+
 				back(callback, err);
 			}
 		}
@@ -1157,6 +1172,9 @@ const trap = (callback, fn) => {
 		try {
 			return fn.apply(this, args);
 		} catch (err) {
+			if (!err)
+				throw err;
+
 			back(callback, err);
 		}
 	};
@@ -1180,6 +1198,9 @@ const wrap = (fn, callback) => {
 		try {
 			return fn.apply(this, args);
 		} catch (err) {
+			if (!err)
+				throw err;
+
 			back(callback, err);
 		}
 	};
@@ -1206,6 +1227,9 @@ const sure_spread = (callback, fn) => {
 		try {
 			return fn.apply(this, args[0]);
 		} catch (err) {
+			if (!err)
+				throw err;
+
 			back(callback, err);
 		}
 	};
@@ -1254,6 +1278,9 @@ const async = (_this, fn, ...args) => {
 		try {
 			return _this[fn].apply(_this, args.concat(callback));
 		} catch (err) {
+			if (!err)
+				throw err;
+
 			back(callback, err);
 		}
 	};

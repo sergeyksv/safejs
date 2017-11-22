@@ -5,6 +5,8 @@ if (typeof Promise !== "function")
 
 var assert = require('assert');
 var safe = require('../app.js');
+var isAsyncSupported = require('is-async-supported');
+
 
 var randomTime = function () {
 	return 4 + Math.round(3 * Math.random());
@@ -117,6 +119,15 @@ describe("safe", function () {
 				throw new Error();
 			}, function (err) {
 				assert(err != null);
+			});
+		});
+
+		(!isAsyncSupported() ? it.skip : it)("works with async functions (ES7)", function (done) {
+			var asfn = new Function("return async () => true;")();
+
+			safe.run(asfn, function (err, result) {
+				assert(result, true);
+				done(err);
 			});
 		});
 	});
