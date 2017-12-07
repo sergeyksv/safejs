@@ -31,7 +31,7 @@
     "babel-minify": "^0.2.0",
     "babel-preset-env": "^1.6.1",
     "es6-promise": "~4.x.x",
-    "eslint": "^4.11.0",
+    "eslint": "^4.12.1",
     "grunt": "^1.0.1",
     "grunt-babel": "^7.0.0",
     "load-grunt-tasks": "^3.5.2",
