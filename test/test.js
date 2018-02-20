@@ -1,12 +1,13 @@
 "use strict";
 
-if (typeof Promise !== "function")
-	require('es6-promise').polyfill();
+require('es6-symbol/implement');
+require('es6-set/implement');
+require('es6-map/implement');
+require('es6-promise/auto');
 
 var assert = require('assert');
 var safe = require('../app.js');
 var isAsyncSupported = require('is-async-supported');
-
 
 var randomTime = function () {
 	return 4 + Math.round(3 * Math.random());
@@ -239,7 +240,7 @@ describe("safe", function () {
 			}));
 		});
 
-		(typeof Set !== "function" ? it.skip : it)("should execute asynchronous each (es6-set)", function (done) {
+		it("should execute asynchronous each (es6-set)", function (done) {
 			var a = 0,
 				set = new Set();
 
@@ -322,7 +323,7 @@ describe("safe", function () {
 			}));
 		});
 
-		(typeof Map !== "function" ? it.skip : it)("should execute asynchronous each (es6-map)", function (done) {
+		it("should execute asynchronous each (es6-map)", function (done) {
 			var a = 0,
 				arr = [['a', 1], ['b', 2], ['c', 3]],
 				map = new Map();

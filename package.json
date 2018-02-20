@@ -28,19 +28,21 @@
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
-    "babel-minify": "^0.2.0",
+    "babel-minify": "^0.3.0",
     "babel-preset-env": "^1.6.1",
-    "es6-promise": "~4.x.x",
-    "eslint": "^4.12.1",
-    "grunt": "^1.0.1",
+    "es6-map": "^0.1.5",
+    "es6-promise": "^4.2.4",
+    "es6-set": "^0.1.5",
+    "es6-symbol": "^3.1.1",
+    "eslint": "^4.18.1",
+    "grunt": "^1.0.2",
     "grunt-babel": "^7.0.0",
+    "is-async-supported": "^1.2.0",
     "load-grunt-tasks": "^3.5.2",
     "mocha": "^3.5.x"
   },
   "scripts": {
     "test": "mocha -bR spec ./test/test.js"
   },
-  "dependencies": {
-    "is-async-supported": "^1.2.0"
-  }
+  "dependencies": {}
 }
