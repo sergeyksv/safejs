@@ -4,7 +4,7 @@ const UNDEFINED = 'undefined',
 	OBJECT = 'object',
 	FUNCTION = 'function',
 	root = typeof self === OBJECT && self.self === self && self || typeof global === OBJECT && global.global === global && global || this,
-	_previous = root ? root.safe : undefined,
+	_previous = root ? root.safe : void 0,
 	_keys = Object.keys,
 	_isArray = Array.isArray,
 	_MAX = Infinity,
@@ -62,7 +62,13 @@ const _iterator_array = (arr) => {
 	return {
 		next: () => {
 			i++;
-			return i < arr.length ? { value: arr[i], key: i, done: false } : { done: true };
+			return i < arr.length ? {
+				value: arr[i],
+				key: i,
+				done: false
+			} : {
+					done: true
+				};
 		}
 	};
 };
@@ -75,7 +81,13 @@ const _iterator_symbol = (obj) => {
 		next: () => {
 			i++;
 			const item = iterator.next();
-			return item.done ? { done: true } : { value: item.value, key: i, done: false };
+			return item.done ? {
+				done: true
+			} : {
+					value: item.value,
+					key: i,
+					done: false
+				};
 		}
 	};
 };
@@ -89,7 +101,13 @@ const _iterator_obj = (obj) => {
 		next: () => {
 			i++;
 			const k = keys[i];
-			return i < l ? { value: obj[k], key: k, done: false } : { done: true };
+			return i < l ? {
+				value: obj[k],
+				key: k,
+				done: false
+			} : {
+					done: true
+				};
 		}
 	};
 };
@@ -154,29 +172,6 @@ const _eachLimit = (obj, limit, fn, callback) => {
 	};
 
 	task();
-};
-
-const _run = (fn, callback) => {
-	if (_isAsyncFunction(fn)) {
-		_resolvePromise(fn(), callback);
-		return;
-	}
-
-	let res;
-
-	try {
-		res = fn(callback);
-	} catch (err) {
-		if (!err)
-			throw err;
-
-		callback(err);
-		return;
-	}
-
-	if (_isPromiseLike(res)) {
-		_resolvePromise(res, callback);
-	}
 };
 
 const _doPsevdoAsync = (fn) => {
@@ -257,7 +252,10 @@ const _groupBy = (obj, limit, fn, callback) => {
 			if (err)
 				return cb(err);
 
-			cb(err, { key: key, val: item });
+			cb(err, {
+				key: key,
+				val: item
+			});
 		});
 	}, (err, mapResults) => {
 		const result = {};
@@ -575,7 +573,7 @@ class _queue {
 				this.saturated();
 
 			run((cb) => {
-				return this.__worker.call(task, data, cb);
+				return this.__worker(data, cb);
 			}, (...args) => {
 				this.__workers--;
 
@@ -781,7 +779,9 @@ class _cargoQ extends _queue {
 			if (this.__workers === this.concurrency)
 				this.saturated();
 
-			run((cb) => this.__worker.call(null, data, cb), (...args) => {
+			run((cb) => {
+				return this.__worker(data, cb);
+			}, (...args) => {
 				this.__workers--;
 
 				tasks.forEach((task) => {
@@ -819,7 +819,7 @@ class _cargoQ extends _queue {
  * @alias yield
  * @param {Function} callback
  * @param {...Array} args
-*/
+ */
 const back = (() => {
 	if (typeof setImmediate === UNDEFINED) {
 		if (typeof process === UNDEFINED) {
@@ -875,7 +875,7 @@ const noConflict = () => {
  * @method
  * @param {Function} callback
  * @param {...Array} args
-*/
+ */
 const nextTick = typeof process !== UNDEFINED && process.nextTick ? process.nextTick : back;
 
 const noop = () => { };
@@ -886,7 +886,7 @@ const noop = () => { };
  * @method
  * @param {Function} fn
  * @param {...Array} args
-*/
+ */
 const apply = (fn, ...args) => {
 	return (...args2) => fn(...args, ...args2);
 };
@@ -898,7 +898,7 @@ const apply = (fn, ...args) => {
  * @method
  * @param {...Array} args
  * @returns {Array}
-*/
+ */
 const argToArr = function (...args) {
 	const len = args.length,
 		rest = parseInt(this);
@@ -924,7 +924,7 @@ const argToArr = function (...args) {
  * @method
  * @param {...Array} args
  * @returns {Function}
-*/
+ */
 const constant = (...args) => {
 	return (callback) => {
 		return callback(null, ...args);
@@ -937,7 +937,7 @@ const constant = (...args) => {
  * @method
  * @param {Function} fn
  * @returns {Function}
-*/
+ */
 const ensureAsync = (fn) => {
 	return function (...args) {
 		let sync = true;
@@ -963,12 +963,12 @@ const ensureAsync = (fn) => {
  * @alias wrapSync
  * @param {Function} func
  * @returns {Function}
-*/
+ */
 const asyncify = (fn) => {
 	return function (...args) {
 		const callback = args.pop();
 
-		_run((cb) => {
+		run((cb) => {
 			const res = fn.apply(this, args);
 			return (_isAsyncFunction(fn) || _isPromiseLike(res)) ? res : cb(null, res);
 		}, callback);
@@ -981,7 +981,7 @@ const asyncify = (fn) => {
  * @method
  * @param {Function} fn
  * @param {Function} callback
-*/
+ */
 const run = (fn, callback) => {
 	if (_isAsyncFunction(fn)) {
 		_resolvePromise(fn(), callback);
@@ -1026,7 +1026,7 @@ const run = (fn, callback) => {
  * @param {Function} callback
  * @param {Function} fn
  * @returns {Function}
-*/
+ */
 const result = (callback, fn) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
@@ -1059,7 +1059,7 @@ const result = (callback, fn) => {
  * @param {Function} callback
  * @param {Function} fn
  * @returns {Function}
-*/
+ */
 const sure_result = (callback, fn) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
@@ -1097,7 +1097,7 @@ const sure_result = (callback, fn) => {
  * @param {Function} callback
  * @param {Function|any} fn
  * @returns {Function}
-*/
+ */
 const sure = (callback, fn) => {
 	if (_isUndefined(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
@@ -1127,7 +1127,7 @@ const sure = (callback, fn) => {
  * @param {Function} callback
  * @param {Function} [fn]
  * @returns {Function}
-*/
+ */
 const trap = (callback, fn) => {
 	if (_isUndefined(callback))
 		throw new TypeError(_typedErrors[2]);
@@ -1158,7 +1158,7 @@ const trap = (callback, fn) => {
  * @param {Function} fn
  * @param {Function} callback
  * @returns {Function}
-*/
+ */
 const wrap = (fn, callback) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
@@ -1184,7 +1184,7 @@ const wrap = (fn, callback) => {
  * @param {Function} callback
  * @param {Function} fn
  * @returns {Function}
-*/
+ */
 const sure_spread = (callback, fn) => {
 	if (_isUndefined(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
@@ -1212,7 +1212,7 @@ const sure_spread = (callback, fn) => {
  * @method
  * @param {Function} fn
  * @returns {Function}
-*/
+ */
 const spread = (fn) => {
 	return function (arr) {
 		return fn.apply(this, arr);
@@ -1225,7 +1225,7 @@ const spread = (fn) => {
  * @method
  * @param {Function} child
  * @param {Function} parent
-*/
+ */
 const inherits = (ctor, superCtor) => {
 	ctor.prototype = Object.create(superCtor.prototype, {
 		constructor: {
@@ -1243,7 +1243,7 @@ const inherits = (ctor, superCtor) => {
  * @param {Function} fn
  * @param {...Array} args
  * @returns {Function}
-*/
+ */
 const async = (_this, fn, ...args) => {
 	return (callback) => {
 		try {
@@ -1264,7 +1264,7 @@ const async = (_this, fn, ...args) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const sortBy = (arr, fn, callback = noop) => {
 	if (!_isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
@@ -1291,7 +1291,7 @@ const sortBy = (arr, fn, callback = noop) => {
  * @method
  * @param {Array} tasks
  * @param {Function} [callback]
-*/
+ */
 const waterfall = (arr, callback = noop) => {
 	if (!_isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
@@ -1325,7 +1325,7 @@ const waterfall = (arr, callback = noop) => {
  * @method
  * @param {Object|Array|Iterable} tasks
  * @param {Function} [callback]
-*/
+ */
 const series = (obj, callback = noop) => {
 	_controlFlow(obj, 1, callback);
 };
@@ -1336,7 +1336,7 @@ const series = (obj, callback = noop) => {
  * @method
  * @param {Object|Array|Iterable} tasks
  * @param {Function} [callback]
-*/
+ */
 const parallel = (obj, callback = noop) => {
 	_controlFlow(obj, _MAX, callback);
 };
@@ -1348,7 +1348,7 @@ const parallel = (obj, callback = noop) => {
  * @param {Object|Array|Iterable} tasks
  * @param {number} limit
  * @param {Function} [callback]
-*/
+ */
 const parallelLimit = (obj, limit, callback = noop) => {
 	_controlFlow(obj, limit, callback);
 };
@@ -1363,7 +1363,7 @@ const parallelLimit = (obj, limit, callback = noop) => {
  * @param {any} memo
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const reduce = (arr, memo, fn, callback = noop) => {
 	_reduce(arr, memo, fn, callback, 1);
 };
@@ -1377,7 +1377,7 @@ const reduce = (arr, memo, fn, callback = noop) => {
  * @param {any} memo
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const reduceRight = (arr, memo, fn, callback = noop) => {
 	_reduce(arr, memo, fn, callback, 0);
 };
@@ -1390,7 +1390,7 @@ const reduceRight = (arr, memo, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const forEach = (arr, fn, callback = noop) => {
 	if (!_isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
@@ -1410,7 +1410,7 @@ const forEach = (arr, fn, callback = noop) => {
  * @param {number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const eachLimit = (arr, limit, fn, callback = noop) => {
 	if (!_isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
@@ -1429,7 +1429,7 @@ const eachLimit = (arr, limit, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const eachSeries = (arr, fn, callback = noop) => {
 	if (!_isArray(arr)) {
 		return _throwError(_typedErrors[1], callback);
@@ -1448,7 +1448,7 @@ const eachSeries = (arr, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const eachOf = (obj, fn, callback = noop) => {
 	if (!_isObject(obj, callback)) {
 		return _throwError(_typedErrors[0], callback);
@@ -1468,7 +1468,7 @@ const eachOf = (obj, fn, callback = noop) => {
  * @param {number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const eachOfLimit = (obj, limit, fn, callback = noop) => {
 	if (!_isObject(obj)) {
 		return _throwError(_typedErrors[0], callback);
@@ -1487,7 +1487,7 @@ const eachOfLimit = (obj, limit, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const eachOfSeries = (obj, fn, callback = noop) => {
 	if (!_isObject(obj)) {
 		return _throwError(_typedErrors[0], callback);
@@ -1505,7 +1505,7 @@ const eachOfSeries = (obj, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const map = (arr, fn, callback = noop) => {
 	_map(arr, _MAX, fn, callback);
 };
@@ -1518,7 +1518,7 @@ const map = (arr, fn, callback = noop) => {
  * @param {number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const mapLimit = (arr, limit, fn, callback = noop) => {
 	_map(arr, limit, fn, callback);
 };
@@ -1530,7 +1530,7 @@ const mapLimit = (arr, limit, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const mapSeries = (arr, fn, callback = noop) => {
 	_map(arr, 1, fn, callback);
 };
@@ -1542,7 +1542,7 @@ const mapSeries = (arr, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const mapValues = (arr, fn, callback = noop) => {
 	_mapValues(arr, _MAX, fn, callback);
 };
@@ -1555,7 +1555,7 @@ const mapValues = (arr, fn, callback = noop) => {
  * @param {number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const mapValuesLimit = (arr, limit, fn, callback = noop) => {
 	_mapValues(arr, limit, fn, callback);
 };
@@ -1567,7 +1567,7 @@ const mapValuesLimit = (arr, limit, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const mapValuesSeries = (arr, fn, callback = noop) => {
 	_mapValues(arr, 1, fn, callback);
 };
@@ -1579,7 +1579,7 @@ const mapValuesSeries = (arr, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const concat = (arr, fn, callback = noop) => {
 	_concat(arr, _MAX, fn, callback);
 };
@@ -1592,7 +1592,7 @@ const concat = (arr, fn, callback = noop) => {
  * @param {number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const concatLimit = (arr, limit, fn, callback = noop) => {
 	_concat(arr, limit, fn, callback);
 };
@@ -1604,7 +1604,7 @@ const concatLimit = (arr, limit, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const concatSeries = (arr, fn, callback = noop) => {
 	_concat(arr, 1, fn, callback);
 };
@@ -1616,7 +1616,7 @@ const concatSeries = (arr, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const groupBy = (obj, fn, callback = noop) => {
 	_groupBy(obj, _MAX, fn, callback);
 };
@@ -1629,7 +1629,7 @@ const groupBy = (obj, fn, callback = noop) => {
  * @param {number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const groupByLimit = (obj, limit, fn, callback = noop) => {
 	_groupBy(obj, limit, fn, callback);
 };
@@ -1641,7 +1641,7 @@ const groupByLimit = (obj, limit, fn, callback = noop) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const groupBySeries = (obj, fn, callback = noop) => {
 	_groupBy(obj, 1, fn, callback);
 };
@@ -1654,7 +1654,7 @@ const groupBySeries = (obj, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const filter = (arr, fn, callback = noop) => {
 	_filter(true, arr, _MAX, fn, callback);
 };
@@ -1667,7 +1667,7 @@ const filter = (arr, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const filterLimit = (arr, limit, fn, callback = noop) => {
 	_filter(true, arr, limit, fn, callback);
 };
@@ -1680,7 +1680,7 @@ const filterLimit = (arr, limit, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const filterSeries = (arr, fn, callback = noop) => {
 	_filter(true, arr, 1, fn, callback);
 };
@@ -1692,7 +1692,7 @@ const filterSeries = (arr, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const reject = (arr, fn, callback = noop) => {
 	_filter(false, arr, _MAX, fn, callback);
 };
@@ -1705,7 +1705,7 @@ const reject = (arr, fn, callback = noop) => {
  * @param {number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const rejectLimit = (arr, limit, fn, callback = noop) => {
 	_filter(false, arr, limit, fn, callback);
 };
@@ -1717,7 +1717,7 @@ const rejectLimit = (arr, limit, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const rejectSeries = (arr, fn, callback = noop) => {
 	_filter(false, arr, 1, fn, callback);
 };
@@ -1730,7 +1730,7 @@ const rejectSeries = (arr, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const some = (arr, fn, callback = noop) => {
 	_test(false, arr, _MAX, fn, callback);
 };
@@ -1744,7 +1744,7 @@ const some = (arr, fn, callback = noop) => {
  * @param {Number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const someLimit = (arr, limit, fn, callback = noop) => {
 	_test(false, arr, limit, fn, callback);
 };
@@ -1757,7 +1757,7 @@ const someLimit = (arr, limit, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const someSeries = (arr, fn, callback = noop) => {
 	_test(false, arr, 1, fn, callback);
 };
@@ -1770,7 +1770,7 @@ const someSeries = (arr, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const every = (arr, fn, callback = noop) => {
 	_test(true, arr, _MAX, fn, callback);
 };
@@ -1783,7 +1783,7 @@ const every = (arr, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const everyLimit = (arr, limit, fn, callback = noop) => {
 	_test(true, arr, limit, fn, callback);
 };
@@ -1796,7 +1796,7 @@ const everyLimit = (arr, limit, fn, callback = noop) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const everySeries = (arr, fn, callback = noop) => {
 	_test(true, arr, 1, fn, callback);
 };
@@ -1808,7 +1808,7 @@ const everySeries = (arr, fn, callback = noop) => {
  * @param {Object} tasks
  * @param {number} [limit]
  * @param {Function} [callback]
-*/
+ */
 const auto = (obj, limit, callback) => {
 	const res = {},
 		starter = Object.create(null),
@@ -1924,7 +1924,7 @@ const auto = (obj, limit, callback) => {
  * @param {Function} test
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const whilst = (test, fn, callback = noop) => {
 	_swhile(_doPsevdoAsync(test), fn, false, true, callback);
 };
@@ -1936,7 +1936,7 @@ const whilst = (test, fn, callback = noop) => {
  * @param {Function} fn
  * @param {Function} test
  * @param {Function} [callback]
-*/
+ */
 const doWhilst = (fn, test, callback = noop) => {
 	_swhile(_doPsevdoAsync(test), fn, false, false, callback);
 };
@@ -1948,7 +1948,7 @@ const doWhilst = (fn, test, callback = noop) => {
  * @param {Function} test
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const during = (test, fn, callback = noop) => {
 	_swhile(test, fn, false, true, callback);
 };
@@ -1960,7 +1960,7 @@ const during = (test, fn, callback = noop) => {
  * @param {Function} fn
  * @param {Function} test
  * @param {Function} [callback]
-*/
+ */
 const doDuring = (fn, test, callback = noop) => {
 	_swhile(test, fn, false, false, callback);
 };
@@ -1972,7 +1972,7 @@ const doDuring = (fn, test, callback = noop) => {
  * @param {Function} test
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const until = (test, fn, callback = noop) => {
 	_swhile(_doPsevdoAsync(test), fn, true, true, callback);
 };
@@ -1984,7 +1984,7 @@ const until = (test, fn, callback = noop) => {
  * @param {Function} fn
  * @param {Function} test
  * @param {Function} [callback]
-*/
+ */
 const doUntil = (fn, test, callback = noop) => {
 	_swhile(_doPsevdoAsync(test), fn, true, false, callback);
 };
@@ -1995,7 +1995,7 @@ const doUntil = (fn, test, callback = noop) => {
  * @method
  * @param {Function} fn
  * @param {Function} callback
-*/
+ */
 const forever = (fn, callback = noop) => {
 	const _callback = _only_once(callback),
 		_fn = ensureAsync(fn);
@@ -2014,8 +2014,8 @@ const forever = (fn, callback = noop) => {
  * @param {Function} fn
  * @param {Function} hasher
  * @returns {Function}
-*/
-const memoize = (fn, hasher = ((v) => {	return v; })) => {
+ */
+const memoize = (fn, hasher = ((v) => v)) => {
 	const memo = {};
 	const queues = {};
 
@@ -2051,7 +2051,7 @@ const memoize = (fn, hasher = ((v) => {	return v; })) => {
  * @method
  * @param {Function} fn
  * @returns {Function}
-*/
+ */
 const unmemoize = (fn) => {
 	return (...args) => (fn.unmemoized || fn)(...args);
 };
@@ -2064,7 +2064,7 @@ const unmemoize = (fn) => {
  * @param {Object|Array|Iterable} obj
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const retry = function (obj, fn, callback) {
 	if (arguments.length < 1 || arguments.length > 3) {
 		throw new Error('Invalid arguments - must be either (task), (task, callback), (times, task) or (times, task, callback)');
@@ -2101,7 +2101,10 @@ const retry = function (obj, fn, callback) {
 		_eachLimit(Array(times), 1, (item, key, cb) => {
 			run((_cb) => fn(_cb, _data), (err, res) => {
 				error = err || null;
-				_data = { err: error, result: res };
+				_data = {
+					err: error,
+					result: res
+				};
 
 				if (err && key < times - 1) {
 					if (errorFilter && !errorFilter(err))
@@ -2135,7 +2138,7 @@ const retry = function (obj, fn, callback) {
  * @param {any} memo
  * @param {Function} task
  * @param {Function} [callback]
-*/
+ */
 const transform = function (arr, memo, task, callback) {
 	/*eslint-disable no-param-reassign*/
 	if (arguments.length <= 3) {
@@ -2158,14 +2161,16 @@ const transform = function (arr, memo, task, callback) {
  * @method
  * @param {Function} fn
  * @returns {Function}
-*/
+ */
 const reflect = (fn) => {
 	return function (...args) {
 		const callback = args[args.length - 1];
 
 		args[args.length - 1] = (error, ...args2) => {
 			if (error) {
-				callback(null, { error: error });
+				callback(null, {
+					error: error
+				});
 			} else {
 				let value;
 
@@ -2175,7 +2180,9 @@ const reflect = (fn) => {
 					value = null;
 				}
 
-				callback(null, { value: value });
+				callback(null, {
+					value: value
+				});
 			}
 		};
 
@@ -2183,9 +2190,13 @@ const reflect = (fn) => {
 
 		if (_isAsyncFunction(fn) || _isPromiseLike(res)) {
 			res.then((value) => {
-				back(callback, null, { value: value });
+				back(callback, null, {
+					value: value
+				});
 			}, (error) => {
-				back(callback, null, { error: error });
+				back(callback, null, {
+					error: error
+				});
 			});
 		}
 	};
@@ -2197,7 +2208,7 @@ const reflect = (fn) => {
  * @method
  * @param {Array} tasks
  * @returns {Array}
-*/
+ */
 const reflectAll = (tasks) => {
 	if (_isArray(tasks)) {
 		return tasks.map(reflect);
@@ -2218,7 +2229,7 @@ const reflectAll = (tasks) => {
  * @method
  * @param {Array} tasks
  * @param {Function} callback
-*/
+ */
 const race = (tasks, callback) => {
 	if (!_isArray(tasks))
 		return _throwError(_typedErrors[0], callback);
@@ -2240,7 +2251,7 @@ const race = (tasks, callback) => {
  * @method
  * @param {Object|Array|Iterable} obj
  * @param {Function} [callback]
-*/
+ */
 const tryEach = (obj, callback = noop) => {
 	if (!_isObject(obj, callback)) {
 		return _throwError(_typedErrors[0], callback);
@@ -2266,7 +2277,7 @@ const tryEach = (obj, callback = noop) => {
  * @method
  * @param {Function} worker
  * @param {number} [threads]
-*/
+ */
 const queue = (worker, threads) => {
 	return new _seriesQ(worker, threads);
 };
@@ -2277,7 +2288,7 @@ const queue = (worker, threads) => {
  * @method
  * @param {Function} worker
  * @param {number} [threads]
-*/
+ */
 const priorityQueue = (worker, threads) => {
 	return new _priorQ(worker, threads);
 };
@@ -2288,7 +2299,7 @@ const priorityQueue = (worker, threads) => {
  * @method
  * @param {Function} worker
  * @param {number} [payload]
-*/
+ */
 const cargo = (worker, payload) => {
 	return new _cargoQ(worker, payload);
 };
@@ -2300,7 +2311,7 @@ const cargo = (worker, payload) => {
  * @param {Number} t - times
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const times = (t, fn, callback) => {
 	_times(t, _MAX, fn, callback);
 };
@@ -2313,7 +2324,7 @@ const times = (t, fn, callback) => {
  * @param {Number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const timesLimit = (t, limit, fn, callback) => {
 	_times(t, limit, fn, callback);
 };
@@ -2325,7 +2336,7 @@ const timesLimit = (t, limit, fn, callback) => {
  * @param {Number} t - times
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const timesSeries = (t, fn, callback) => {
 	_times(t, 1, fn, callback);
 };
@@ -2337,7 +2348,7 @@ const timesSeries = (t, fn, callback) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const detect = (arr, fn, callback) => {
 	_detect(arr, _MAX, fn, callback);
 };
@@ -2350,7 +2361,7 @@ const detect = (arr, fn, callback) => {
  * @param {Number} limit
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const detectLimit = (arr, limit, fn, callback) => {
 	_detect(arr, limit, fn, callback);
 };
@@ -2362,7 +2373,7 @@ const detectLimit = (arr, limit, fn, callback) => {
  * @param {Array} arr
  * @param {Function} fn
  * @param {Function} [callback]
-*/
+ */
 const detectSeries = (arr, fn, callback) => {
 	_detect(arr, 1, fn, callback);
 };
@@ -2374,7 +2385,7 @@ const detectSeries = (arr, fn, callback) => {
  * @param {Object|Array|Iterable} obj
  * @param {...Array} [args]
  * @param {Function} callback
-*/
+ */
 const applyEach = _applyEach(_MAX);
 
 /**
@@ -2384,7 +2395,7 @@ const applyEach = _applyEach(_MAX);
  * @param {Object|Array|Iterable} obj
  * @param {...Array} [args]
  * @param {Function} callback
-*/
+ */
 const applyEachSeries = _applyEach(1);
 
 exports['default'] = {
