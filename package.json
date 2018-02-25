@@ -39,7 +39,7 @@
     "grunt-babel": "^7.0.0",
     "is-async-supported": "^1.2.0",
     "load-grunt-tasks": "^3.5.2",
-    "mocha": "^3.5.x"
+    "mocha": "^3.5.3"
   },
   "scripts": {
     "test": "mocha -bR spec ./test/test.js"

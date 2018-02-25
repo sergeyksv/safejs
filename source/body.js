@@ -67,8 +67,8 @@ const _iterator_array = (arr) => {
 				key: i,
 				done: false
 			} : {
-					done: true
-				};
+				done: true
+			};
 		}
 	};
 };
@@ -84,10 +84,10 @@ const _iterator_symbol = (obj) => {
 			return item.done ? {
 				done: true
 			} : {
-					value: item.value,
-					key: i,
-					done: false
-				};
+				value: item.value,
+				key: i,
+				done: false
+			};
 		}
 	};
 };
@@ -106,8 +106,8 @@ const _iterator_obj = (obj) => {
 				key: k,
 				done: false
 			} : {
-					done: true
-				};
+				done: true
+			};
 		}
 	};
 };
@@ -416,8 +416,16 @@ const _reduce = (arr, memo, fn, callback = noop, direction) => {
 };
 
 const _applyEach = (limit) => {
-	return function (fns, ...args) {
-		const task = function (...args2) {
+	/**
+	 * @name applyEach
+	 * @static
+	 * @method
+	 * @param {Object|Array|Iterable} obj
+	 * @param {...any} [args]
+	 * @param {Function} callback
+	 */
+	return function applyEach(fns, ...args) {
+		const task = function task(...args2) {
 			const callback = args2.pop();
 
 			_eachLimit(fns, limit, (fn, key, cb) => {
@@ -438,8 +446,13 @@ const _applyEach = (limit) => {
 /**
  * @class
  */
-class _queue {
-	constructor(worker, concurrency, name) {
+class _Queue {
+	/**
+	 * Create a queue.
+	 * @param {Function} worker
+	 * @param {number} concurrency
+	 */
+	constructor(worker, concurrency) {
 		const _concurrency = parseInt(concurrency);
 
 		if (!_concurrency) {
@@ -447,12 +460,6 @@ class _queue {
 		}
 
 		Object.defineProperties(this, {
-			'name': {
-				enumerable: true,
-				configurable: false,
-				writable: false,
-				value: name
-			},
 			'__worker': {
 				enumerable: false,
 				configurable: false,
@@ -603,6 +610,10 @@ class _queue {
 		this.__isProcessing = false;
 	}
 
+	/**
+	 * remove items from the queue that match a test function
+	 * @param {Function} test function
+	 */
 	remove(fn) {
 		let tasks = this.tasks.filter((item) => !fn(item.data));
 
@@ -613,41 +624,91 @@ class _queue {
 		});
 	}
 
+	/**
+	 * add a new task to the queue
+	 * @param {any} data
+	 * @param {Function} callback
+	 */
 	push(data, callback) {
 		this.__insert(data, false, callback);
 	}
 
-	saturated() { }
+	/**
+	 * callback that is called when the number of running workers
+	 * hits the `concurrency` limit, and further tasks will be queued.
+	 */
+	saturated() {}
 
-	unsaturated() { }
+	/**
+	 * a callback that is called when the number of running workers
+	 * is less than the `concurrency` & `buffer` limits, and
+	 * further tasks will not be queued.
+	 */
+	unsaturated() {}
 
-	empty() { }
+	/**
+	 * a callback that is called when the last item
+	 * from the `queue` is given to a `worker`.
+	*/
+	empty() {}
 
-	drain() { }
+	/**
+	 * a callback that is called when the last item
+	 * from the `queue` has returned from the `worker`.
+	*/
+	drain() {}
 
-	error() { }
+	/**
+	 * a callback that is called when a task errors.
+	 * @param {Error} err
+	 * @param {any} task
+	*/
+	error() {}
 
+	/**
+	 * a function that removes the `drain` callback
+	 * and empties remaining tasks from the queue
+	 */
 	kill() {
 		delete this.drain;
 		this.tasks.length = 0;
 	}
 
+	/**
+	 * a function returning the number of items in the queue
+	 * @return {number} length
+	 */
 	length() {
 		return this.tasks.length;
 	}
 
+	/**
+	 * a function returning the array of items of the queue
+	 * @return {Array} workers
+	 */
 	running() {
 		return this.__workers;
 	}
 
+	/**
+	 * a function returning false if there are items
+	 * waiting or being processed, or true if not
+	 * @return {boolena} processed
+	 */
 	idle() {
 		return this.tasks.length + this.__workers === 0;
 	}
 
+	/**
+	 * a function that pauses the processing of tasks
+	 */
 	pause() {
 		this.paused = true;
 	}
 
+	/**
+	 * a function that resumes the processing of the queued tasks
+	 */
 	resume() {
 		if (!this.paused)
 			return;
@@ -656,22 +717,39 @@ class _queue {
 		back(() => this.__execute());
 	}
 
+	/**
+	 * a function returning the array of items currently being processed
+	 * @return {Array} an active workers
+	 */
 	workersList() {
 		return this.__workersList;
 	}
 }
 
-/**
+ /**
  * Creates a new priority queue.
+ * @name PriorityQueue
  * @class
+ * @extends _Queue
  */
-class _priorQ extends _queue {
+class PriorityQueue extends _Queue {
+	/**
+	 * Create a queue.
+	 * @param {Function} worker
+	 * @param {number} concurrency
+	 */
 	constructor(worker, concurrency) {
 		super(worker, concurrency, 'Priority Queue');
 	}
 
-	push(data, prior, callback) {
-		this.__insert(data, prior || 0, callback);
+	/**
+	 * add a new task to the queue
+	 * @param {any} data
+	 * @param {number} priority
+	 * @param {Function} callback
+	 */
+	push(data, priority, callback) {
+		this.__insert(data, priority || 0, callback);
 	}
 
 	__insert(data, prior, callback) {
@@ -723,24 +801,42 @@ class _priorQ extends _queue {
 
 /**
  * Creates a new queue.
+ * @name Queue
  * @class
+ * @extends _Queue
  */
-class _seriesQ extends _queue {
+class Queue extends _Queue {
+	/**
+	 * Create a queue.
+	 * @param {Function} worker
+	 * @param {number} concurrency
+	 */
 	constructor(worker, concurrency) {
 		super(worker, concurrency, 'Queue');
 	}
 
+	/**
+	 * add a new task to the front of the queue
+	 * @param {any} data
+	 * @param {Function} callback
+	 */
 	unshift(data, callback) {
 		this.__insert(data, true, callback);
 	}
 }
 
-
-/**
- * Creates a new cargo.
+  /**
+ * Creates a new cargo queue.
+ * @name CargoQueue
  * @class
+ * @extends _Queue
  */
-class _cargoQ extends _queue {
+class CargoQueue extends _Queue {
+	/**
+	 * Create a cargo queue.
+	 * @param {Function} worker
+	 * @param {number} payload
+	 */
 	constructor(worker, payload) {
 		super(worker, 1, 'Cargo');
 
@@ -810,7 +906,6 @@ class _cargoQ extends _queue {
 }
 
 /* +++++++++++++++++++++++++ public functions +++++++++++++++++++++++++ */
-
 /**
  * @name back
  * @static
@@ -818,12 +913,13 @@ class _cargoQ extends _queue {
  * @alias setImmediate
  * @alias yield
  * @param {Function} callback
- * @param {...Array} args
+ * @param {...any} [args]
  */
 const back = (() => {
 	if (typeof setImmediate === UNDEFINED) {
 		if (typeof process === UNDEFINED) {
 			if (typeof Image === FUNCTION) { // browser polyfill
+
 				return (callback, ...args) => {
 					if (!_isFunction(callback))
 						throw new TypeError(_typedErrors[3]);
@@ -874,21 +970,30 @@ const noConflict = () => {
  * @static
  * @method
  * @param {Function} callback
- * @param {...Array} args
  */
 const nextTick = typeof process !== UNDEFINED && process.nextTick ? process.nextTick : back;
 
-const noop = () => { };
+/**
+ * @name noop
+ * @static
+ * @method
+ * @returns {undefined}
+ */
+const noop = () => {};
 
 /**
  * @name apply
  * @static
  * @method
  * @param {Function} fn
- * @param {...Array} args
+ * @param {...ary} args
  */
 const apply = (fn, ...args) => {
-	return (...args2) => fn(...args, ...args2);
+	/**
+	 * @param {...any} args2
+	 */
+	const _wrappedFn = (...args2) => fn(...args, ...args2);
+	return _wrappedFn;
 };
 
 /**
@@ -896,10 +1001,10 @@ const apply = (fn, ...args) => {
  * @name args
  * @static
  * @method
- * @param {...Array} args
+ * @param {...any} args
  * @returns {Array}
  */
-const argToArr = function (...args) {
+const argToArr = function argToArr(...args) {
 	const len = args.length,
 		rest = parseInt(this);
 
@@ -926,6 +1031,9 @@ const argToArr = function (...args) {
  * @returns {Function}
  */
 const constant = (...args) => {
+	/**
+	 * @param {Function} callback
+	 */
 	return (callback) => {
 		return callback(null, ...args);
 	};
@@ -939,11 +1047,15 @@ const constant = (...args) => {
  * @returns {Function}
  */
 const ensureAsync = (fn) => {
-	return function (...args) {
+	/**
+	 * {...any} args
+	 * @param {Function} callback
+	 */
+	return function _wrappedFn(...args) {
 		let sync = true;
 		const callback = args[args.length - 1];
 
-		args[args.length - 1] = function (...args2) {
+		args[args.length - 1] = function _wrappedCallback(...args2) {
 			if (sync)
 				back(() => callback.apply(this, args2));
 			else
@@ -961,11 +1073,15 @@ const ensureAsync = (fn) => {
  * @static
  * @method
  * @alias wrapSync
- * @param {Function} func
+ * @param {AyncFunction} fn
  * @returns {Function}
  */
 const asyncify = (fn) => {
-	return function (...args) {
+	/**
+	 * {...any} args
+	 * @param {Function} callback
+	 */
+	return function _wrappedFn(...args) {
 		const callback = args.pop();
 
 		run((cb) => {
@@ -979,7 +1095,7 @@ const asyncify = (fn) => {
  * @name run
  * @static
  * @method
- * @param {Function} fn
+ * @param {AsyncFunction} fn
  * @param {Function} callback
  */
 const run = (fn, callback) => {
@@ -1031,7 +1147,7 @@ const result = (callback, fn) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
-	return function (...args) {
+	return function _wrappedFn(...args) {
 		let res;
 
 		try {
@@ -1064,7 +1180,11 @@ const sure_result = (callback, fn) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
-	return function (err, ...args) {
+	/**
+	 * @param {Error} [err=null]
+	 * @param {...any} args
+	 */
+	return function _wrappedFn(err, ...args) {
 		if (err) {
 			callback(err);
 			return;
@@ -1102,7 +1222,11 @@ const sure = (callback, fn) => {
 	if (_isUndefined(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
-	return function (err, ...args) {
+	/**
+	 * @param {Error} [err=null]
+	 * @param {...any} args
+	 */
+	return function _wrappedFn(err, ...args) {
 		if (err) {
 			callback(err);
 		} else if (!_isFunction(fn)) {
@@ -1132,7 +1256,11 @@ const trap = (callback, fn) => {
 	if (_isUndefined(callback))
 		throw new TypeError(_typedErrors[2]);
 
-	return function (...args) {
+	/**
+	 * @param {Error} [err=null]
+	 * @param {...any} args
+	 */
+	return function _wrappedFn(...args) {
 		/*eslint-disable no-param-reassign*/
 		if (_isUndefined(fn)) {
 			fn = callback;
@@ -1163,7 +1291,10 @@ const wrap = (fn, callback) => {
 	if (!_isFunction(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
-	return function (...args) {
+	/**
+	 * @param {...any} args
+	 */
+	return function _wrappedFn(...args) {
 		args.push(callback);
 
 		try {
@@ -1189,7 +1320,11 @@ const sure_spread = (callback, fn) => {
 	if (_isUndefined(fn) || !_isFunction(callback))
 		throw new TypeError(_typedErrors[2]);
 
-	return function (err, ...args) {
+	/**
+	 * @param {Error} [err=null]
+	 * @param {...any} args
+	 */
+	return function _wrappedFn(err, ...args) {
 		if (err) {
 			callback(err);
 			return;
@@ -1214,8 +1349,11 @@ const sure_spread = (callback, fn) => {
  * @returns {Function}
  */
 const spread = (fn) => {
-	return function (arr) {
-		return fn.apply(this, arr);
+	/**
+	 * @param {Array} args
+	 */
+	return function _wrappedFn(args) {
+		return fn.apply(this, args);
 	};
 };
 
@@ -1223,8 +1361,8 @@ const spread = (fn) => {
  * @name inherits
  * @static
  * @method
- * @param {Function} child
- * @param {Function} parent
+ * @param {Function} ctor - class
+ * @param {Function} superCtor - super class
  */
 const inherits = (ctor, superCtor) => {
 	ctor.prototype = Object.create(superCtor.prototype, {
@@ -1240,12 +1378,15 @@ const inherits = (ctor, superCtor) => {
  * @static
  * @method
  * @param {Object} _this - context object
- * @param {Function} fn
- * @param {...Array} args
+ * @param {AsyncFunction} fn
+ * @param {...any} args
  * @returns {Function}
  */
 const async = (_this, fn, ...args) => {
-	return (callback) => {
+	/**
+	 * @param {Function} callback
+	 */
+	const _wrappedFn = (callback) => {
 		try {
 			return _this[fn].apply(_this, args.concat(callback));
 		} catch (err) {
@@ -1255,6 +1396,8 @@ const async = (_this, fn, ...args) => {
 			back(callback, err);
 		}
 	};
+
+	return _wrappedFn;
 };
 
 /**
@@ -1361,7 +1504,7 @@ const parallelLimit = (obj, limit, callback = noop) => {
  * @alias foldl
  * @param {Array} arr
  * @param {any} memo
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const reduce = (arr, memo, fn, callback = noop) => {
@@ -1375,7 +1518,7 @@ const reduce = (arr, memo, fn, callback = noop) => {
  * @alias foldr
  * @param {Array} arr
  * @param {any} memo
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const reduceRight = (arr, memo, fn, callback = noop) => {
@@ -1388,7 +1531,7 @@ const reduceRight = (arr, memo, fn, callback = noop) => {
  * @method
  * @alias forEach
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const forEach = (arr, fn, callback = noop) => {
@@ -1408,7 +1551,7 @@ const forEach = (arr, fn, callback = noop) => {
  * @alias forEachLimit
  * @param {Array} arr
  * @param {number} limit
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const eachLimit = (arr, limit, fn, callback = noop) => {
@@ -1427,7 +1570,7 @@ const eachLimit = (arr, limit, fn, callback = noop) => {
  * @method
  * @alias forEachSeries
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const eachSeries = (arr, fn, callback = noop) => {
@@ -1446,7 +1589,7 @@ const eachSeries = (arr, fn, callback = noop) => {
  * @method
  * @alias forEachOf
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const eachOf = (obj, fn, callback = noop) => {
@@ -1466,7 +1609,7 @@ const eachOf = (obj, fn, callback = noop) => {
  * @alias forEachOfLimit
  * @param {Object|Array|Iterable} obj
  * @param {number} limit
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const eachOfLimit = (obj, limit, fn, callback = noop) => {
@@ -1485,7 +1628,7 @@ const eachOfLimit = (obj, limit, fn, callback = noop) => {
  * @method
  * @alias forEachOfSeries
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const eachOfSeries = (obj, fn, callback = noop) => {
@@ -1503,7 +1646,7 @@ const eachOfSeries = (obj, fn, callback = noop) => {
  * @static
  * @method
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const map = (arr, fn, callback = noop) => {
@@ -1516,7 +1659,7 @@ const map = (arr, fn, callback = noop) => {
  * @method
  * @param {Object|Array|Iterable} obj
  * @param {number} limit
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const mapLimit = (arr, limit, fn, callback = noop) => {
@@ -1528,7 +1671,7 @@ const mapLimit = (arr, limit, fn, callback = noop) => {
  * @static
  * @method
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const mapSeries = (arr, fn, callback = noop) => {
@@ -1540,7 +1683,7 @@ const mapSeries = (arr, fn, callback = noop) => {
  * @static
  * @method
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const mapValues = (arr, fn, callback = noop) => {
@@ -1553,7 +1696,7 @@ const mapValues = (arr, fn, callback = noop) => {
  * @method
  * @param {Object|Array|Iterable} obj
  * @param {number} limit
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const mapValuesLimit = (arr, limit, fn, callback = noop) => {
@@ -1565,7 +1708,7 @@ const mapValuesLimit = (arr, limit, fn, callback = noop) => {
  * @static
  * @method
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const mapValuesSeries = (arr, fn, callback = noop) => {
@@ -1577,7 +1720,7 @@ const mapValuesSeries = (arr, fn, callback = noop) => {
  * @static
  * @method
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const concat = (arr, fn, callback = noop) => {
@@ -1590,7 +1733,7 @@ const concat = (arr, fn, callback = noop) => {
  * @method
  * @param {Array} arr
  * @param {number} limit
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const concatLimit = (arr, limit, fn, callback = noop) => {
@@ -1602,7 +1745,7 @@ const concatLimit = (arr, limit, fn, callback = noop) => {
  * @static
  * @method
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const concatSeries = (arr, fn, callback = noop) => {
@@ -1614,7 +1757,7 @@ const concatSeries = (arr, fn, callback = noop) => {
  * @static
  * @method
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const groupBy = (obj, fn, callback = noop) => {
@@ -1627,7 +1770,7 @@ const groupBy = (obj, fn, callback = noop) => {
  * @method
  * @param {Object|Array|Iterable} obj
  * @param {number} limit
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const groupByLimit = (obj, limit, fn, callback = noop) => {
@@ -1639,7 +1782,7 @@ const groupByLimit = (obj, limit, fn, callback = noop) => {
  * @static
  * @method
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const groupBySeries = (obj, fn, callback = noop) => {
@@ -1652,7 +1795,7 @@ const groupBySeries = (obj, fn, callback = noop) => {
  * @method
  * @alias select
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const filter = (arr, fn, callback = noop) => {
@@ -1665,7 +1808,7 @@ const filter = (arr, fn, callback = noop) => {
  * @method
  * @alias selectLimit
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const filterLimit = (arr, limit, fn, callback = noop) => {
@@ -1678,7 +1821,7 @@ const filterLimit = (arr, limit, fn, callback = noop) => {
  * @method
  * @alias selectSeries
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const filterSeries = (arr, fn, callback = noop) => {
@@ -1690,7 +1833,7 @@ const filterSeries = (arr, fn, callback = noop) => {
  * @static
  * @method
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const reject = (arr, fn, callback = noop) => {
@@ -1703,7 +1846,7 @@ const reject = (arr, fn, callback = noop) => {
  * @method
  * @param {Array} arr
  * @param {number} limit
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const rejectLimit = (arr, limit, fn, callback = noop) => {
@@ -1715,7 +1858,7 @@ const rejectLimit = (arr, limit, fn, callback = noop) => {
  * @static
  * @method
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const rejectSeries = (arr, fn, callback = noop) => {
@@ -1728,7 +1871,7 @@ const rejectSeries = (arr, fn, callback = noop) => {
  * @method
  * @alias any
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const some = (arr, fn, callback = noop) => {
@@ -1741,8 +1884,8 @@ const some = (arr, fn, callback = noop) => {
  * @method
  * @alias anyLimit
  * @param {Array} arr
- * @param {Number} limit
- * @param {Function} fn
+ * @param {number} limit
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const someLimit = (arr, limit, fn, callback = noop) => {
@@ -1755,7 +1898,7 @@ const someLimit = (arr, limit, fn, callback = noop) => {
  * @method
  * @alias anySeries
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const someSeries = (arr, fn, callback = noop) => {
@@ -1768,7 +1911,7 @@ const someSeries = (arr, fn, callback = noop) => {
  * @method
  * @alias all
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const every = (arr, fn, callback = noop) => {
@@ -1781,7 +1924,7 @@ const every = (arr, fn, callback = noop) => {
  * @method
  * @alias allLimit
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const everyLimit = (arr, limit, fn, callback = noop) => {
@@ -1794,7 +1937,7 @@ const everyLimit = (arr, limit, fn, callback = noop) => {
  * @method
  * @alias allSeries
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const everySeries = (arr, fn, callback = noop) => {
@@ -1805,8 +1948,8 @@ const everySeries = (arr, fn, callback = noop) => {
  * @name auto
  * @static
  * @method
- * @param {Object} tasks
- * @param {number} [limit]
+ * @param {Object.<string,Function|string[]>} obj- object with a tasks
+ * @param {number} [limit=Infinity]
  * @param {Function} [callback]
  */
 const auto = (obj, limit, callback) => {
@@ -1922,7 +2065,7 @@ const auto = (obj, limit, callback) => {
  * @static
  * @method
  * @param {Function} test
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const whilst = (test, fn, callback = noop) => {
@@ -1933,7 +2076,7 @@ const whilst = (test, fn, callback = noop) => {
  * @name doWhilst
  * @static
  * @method
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} test
  * @param {Function} [callback]
  */
@@ -1946,7 +2089,7 @@ const doWhilst = (fn, test, callback = noop) => {
  * @static
  * @method
  * @param {Function} test
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const during = (test, fn, callback = noop) => {
@@ -1957,7 +2100,7 @@ const during = (test, fn, callback = noop) => {
  * @name doDuring
  * @static
  * @method
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} test
  * @param {Function} [callback]
  */
@@ -1970,7 +2113,7 @@ const doDuring = (fn, test, callback = noop) => {
  * @static
  * @method
  * @param {Function} test
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const until = (test, fn, callback = noop) => {
@@ -1981,7 +2124,7 @@ const until = (test, fn, callback = noop) => {
  * @name doUntil
  * @static
  * @method
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} test
  * @param {Function} [callback]
  */
@@ -1993,7 +2136,7 @@ const doUntil = (fn, test, callback = noop) => {
  * @name forever
  * @static
  * @method
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} callback
  */
 const forever = (fn, callback = noop) => {
@@ -2053,7 +2196,11 @@ const memoize = (fn, hasher = ((v) => v)) => {
  * @returns {Function}
  */
 const unmemoize = (fn) => {
-	return (...args) => (fn.unmemoized || fn)(...args);
+	/**
+	 * @param {...any} args
+	 */
+	const _wrappedFn = (...args) => (fn.unmemoized || fn)(...args);
+	return _wrappedFn;
 };
 
 /**
@@ -2062,7 +2209,7 @@ const unmemoize = (fn) => {
  * @method
  * @alias retryable
  * @param {Object|Array|Iterable} obj
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const retry = function (obj, fn, callback) {
@@ -2159,14 +2306,18 @@ const transform = function (arr, memo, task, callback) {
  * @name reflect
  * @static
  * @method
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @returns {Function}
  */
 const reflect = (fn) => {
-	return function (...args) {
+	/**
+	 * @param {...any} args
+	 * @param {Function} callback
+	 */
+	return function _wrappedFn(...args) {
 		const callback = args[args.length - 1];
 
-		args[args.length - 1] = (error, ...args2) => {
+		args[args.length - 1] = function _wrappedCallback(error, ...args2) {
 			if (error) {
 				callback(null, {
 					error: error
@@ -2279,7 +2430,14 @@ const tryEach = (obj, callback = noop) => {
  * @param {number} [threads]
  */
 const queue = (worker, threads) => {
-	return new _seriesQ(worker, threads);
+	/**
+	 * @property {Array} tasks
+	 * @property {number} concurrency
+	 * @property {number} buffer
+	 * @property {boolean} started
+	 * @property {boolean} paused
+	 */
+	return new Queue(worker, threads);
 };
 
 /**
@@ -2290,7 +2448,14 @@ const queue = (worker, threads) => {
  * @param {number} [threads]
  */
 const priorityQueue = (worker, threads) => {
-	return new _priorQ(worker, threads);
+	/**
+	 * @property {Array} tasks
+	 * @property {number} concurrency
+	 * @property {number} buffer
+	 * @property {boolean} started
+	 * @property {boolean} paused
+	 */
+	return new PriorityQueue(worker, threads);
 };
 
 /**
@@ -2301,15 +2466,23 @@ const priorityQueue = (worker, threads) => {
  * @param {number} [payload]
  */
 const cargo = (worker, payload) => {
-	return new _cargoQ(worker, payload);
+	/**
+	 * @property {Array} tasks
+	 * @property {number} concurrency
+	 * @property {number} buffer
+	 * @property {boolean} started
+	 * @property {boolean} paused
+	 * @property {number} payload
+	 */
+	return new CargoQueue(worker, payload);
 };
 
 /**
  * @name times
  * @static
  * @method
- * @param {Number} t - times
- * @param {Function} fn
+ * @param {number} t - times
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const times = (t, fn, callback) => {
@@ -2320,9 +2493,9 @@ const times = (t, fn, callback) => {
  * @name timesLimit
  * @static
  * @method
- * @param {Number} t - times
- * @param {Number} limit
- * @param {Function} fn
+ * @param {number} t - times
+ * @param {number} limit
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const timesLimit = (t, limit, fn, callback) => {
@@ -2333,8 +2506,8 @@ const timesLimit = (t, limit, fn, callback) => {
  * @name timesSeries
  * @static
  * @method
- * @param {Number} t - times
- * @param {Function} fn
+ * @param {number} t - times
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const timesSeries = (t, fn, callback) => {
@@ -2346,7 +2519,7 @@ const timesSeries = (t, fn, callback) => {
  * @static
  * @method
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const detect = (arr, fn, callback) => {
@@ -2358,8 +2531,8 @@ const detect = (arr, fn, callback) => {
  * @static
  * @method
  * @param {Array} arr
- * @param {Number} limit
- * @param {Function} fn
+ * @param {number} limit
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const detectLimit = (arr, limit, fn, callback) => {
@@ -2371,34 +2544,17 @@ const detectLimit = (arr, limit, fn, callback) => {
  * @static
  * @method
  * @param {Array} arr
- * @param {Function} fn
+ * @param {AsyncFunction} iterator
  * @param {Function} [callback]
  */
 const detectSeries = (arr, fn, callback) => {
 	_detect(arr, 1, fn, callback);
 };
 
-/**
- * @name applyEach
- * @static
- * @method
- * @param {Object|Array|Iterable} obj
- * @param {...Array} [args]
- * @param {Function} callback
- */
 const applyEach = _applyEach(_MAX);
-
-/**
- * @name applyEachSeries
- * @static
- * @method
- * @param {Object|Array|Iterable} obj
- * @param {...Array} [args]
- * @param {Function} callback
- */
 const applyEachSeries = _applyEach(1);
 
-exports['default'] = {
+const safe = {
 	noConflict,
 	noop,
 	nextTick,
@@ -2508,10 +2664,111 @@ exports['default'] = {
 	tryEach
 };
 
-Object.keys(exports['default']).forEach((key) => {
-	exports[key] = exports['default'][key];
-});
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
+exports['default'] = safe;
+exports.noConflict = noConflict;
+exports.noop = noop;
+exports.nextTick = nextTick;
+exports.back = back;
+exports.setImmediate = back;
+exports.yield = back;
+exports.apply = apply;
+exports.async = async;
+exports.inherits = inherits;
+exports.args = argToArr;
+exports.ensureAsync = ensureAsync;
+exports.constant = constant;
+exports.result = result;
+exports.sure_result = sure_result;
+exports.trap_sure_result = sure_result;
+exports.sure = sure;
+exports.trap_sure = sure;
+exports.sure_spread = sure_spread;
+exports.spread = spread;
+exports.trap = trap;
+exports.wrap = wrap;
+exports.run = run;
+exports.each = forEach;
+exports.forEach = forEach;
+exports.eachLimit = eachLimit;
+exports.forEachLimit = eachLimit;
+exports.eachSeries = eachSeries;
+exports.forEachSeries = eachSeries;
+exports.eachOf = eachOf;
+exports.forEachOf = eachOf;
+exports.eachOfLimit = eachOfLimit;
+exports.forEachOfLimit = eachOfLimit;
+exports.eachOfSeries = eachOfSeries;
+exports.forEachOfSeries = eachOfSeries;
+exports.map = map;
+exports.mapLimit = mapLimit;
+exports.mapSeries = mapSeries;
+exports.groupBy = groupBy;
+exports.groupByLimit = groupByLimit;
+exports.groupBySeries = groupBySeries;
+exports.mapValues = mapValues;
+exports.mapValuesLimit = mapValuesLimit;
+exports.mapValuesSeries = mapValuesSeries;
+exports.concat = concat;
+exports.concatLimit = concatLimit;
+exports.concatSeries = concatSeries;
+exports.sortBy = sortBy;
+exports.filter = filter;
+exports.select = filter;
+exports.filterLimit = filterLimit;
+exports.selectLimit = filterLimit;
+exports.filterSeries = filterSeries;
+exports.selectSeries = filterSeries;
+exports.reject = reject;
+exports.rejectLimit = rejectLimit;
+exports.rejectSeries = rejectSeries;
+exports.waterfall = waterfall;
+exports.series = series;
+exports.parallel = parallel;
+exports.parallelLimit = parallelLimit;
+exports.auto = auto;
+exports.whilst = whilst;
+exports.doWhilst = doWhilst;
+exports.during = during;
+exports.doDuring = doDuring;
+exports.until = until;
+exports.doUntil = doUntil;
+exports.forever = forever;
+exports.reduce = reduce;
+exports.inject = reduce;
+exports.foldl = reduce;
+exports.reduceRight = reduceRight;
+exports.foldr = reduceRight;
+exports.queue = queue;
+exports.priorityQueue = priorityQueue;
+exports.cargo = cargo;
+exports.retry = retry;
+exports.retryable = retry;
+exports.times = times;
+exports.timesLimit = timesLimit;
+exports.timesSeries = timesSeries;
+exports.detect = detect;
+exports.detectLimit = detectLimit;
+exports.detectSeries = detectSeries;
+exports.some = some;
+exports.any = some;
+exports.someLimit = someLimit;
+exports.anyLimit = someLimit;
+exports.someSeries = someSeries;
+exports.anySeries = someSeries;
+exports.every = every;
+exports.all = every;
+exports.everyLimit = everyLimit;
+exports.allLimit = everyLimit;
+exports.everySeries = everySeries;
+exports.allSeries = everySeries;
+exports.applyEach = applyEach;
+exports.applyEachSeries = applyEachSeries;
+exports.asyncify = asyncify;
+exports.wrapSync = asyncify;
+exports.memoize = memoize;
+exports.unmemoize = unmemoize;
+exports.transform = transform;
+exports.reflect = reflect;
+exports.reflectAll = reflectAll;
+exports.race = race;
+exports.tryEach = tryEach;

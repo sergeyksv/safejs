@@ -1,12 +1,18 @@
-function checkES6 () {
-	"use strict";
+"use strict";
 
+var isE6 = checkES6();
+
+function checkES6() {
 	try {
 		new Function('a', 'class orig { constructor () { } }; class cls extends orig { constructor () { super() } }; var noop = () => { }; var foo = (f = noop, ...args) => [].push(...a); return foo;')([]);
-		return './lib/safe.modern.js';
+		return true;
 	} catch (err) {
-		return './lib/safe.js';
+		return false;
 	}
 }
 
-module.exports = require(checkES6());
+if (isE6) {
+	module.exports = require('./lib/safe.modern.js');
+} else {
+	module.exports = require('./lib/safe.js');
+}
