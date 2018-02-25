@@ -49,7 +49,8 @@
         "no-throw-literal": 1,
         "no-template-curly-in-string": 2,
         "use-isnan": 1,
-        "valid-typeof": 1,
+        "valid-jsdoc": [2, {"requireReturn": false, "requireParamDescription": false, "requireReturnDescription": false}],
+        "valid-typeof": 2,
         "no-process-exit": [0]
     }
 }
