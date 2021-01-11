@@ -5,32 +5,31 @@ module.exports = function (grunt) {
 
 	grunt.initConfig({
 		babel: {
-			options: {
-				sourceMap: false
-			},
 			es2015: {
 				files: {
 					'./lib/safe.js': './lib/safe.modern.js'
 				},
 				options: {
+					compact: false,
+					sourceMap: false,
 					presets: [
-						["env", {
+						["@babel/preset-env", {
+							corejs: { version: 3, proposals: false },
+							useBuiltIns: "entry",
+							bugfixes: true,
 							loose: true,
 							modules: false,
 							forceAllTransforms: true
 						}]
 					]
 				}
-			},
-			minify: {
+			}
+		},
+		terser: {
+			all: {
 				files: {
 					'./lib/safe.min.js': './lib/safe.js',
 					'./lib/safe.modern.min.js': './lib/safe.modern.js'
-				},
-				options: {
-					presets: [
-						["minify", {}]
-					]
 				}
 			}
 		},
@@ -55,5 +54,5 @@ module.exports = function (grunt) {
 		grunt.log.writeln('✓ '.green + './lib/safe.js');
 	});
 
-	grunt.registerTask('default', ['body', 'babel:es2015', 'umd', 'babel:minify']);
+	grunt.registerTask('default', ['body', 'babel', 'umd', 'terser']);
 };

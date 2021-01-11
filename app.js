@@ -11,8 +11,8 @@ function checkES6() {
 	}
 }
 
-if (isE6) {
-	module.exports = require('./lib/safe.modern.js');
-} else {
+if (!isE6) {
 	module.exports = require('./lib/safe.js');
+} else {
+	module.exports = require('./lib/safe.modern.js');
 }

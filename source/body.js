@@ -3,8 +3,6 @@
 const UNDEFINED = 'undefined',
 	OBJECT = 'object',
 	FUNCTION = 'function',
-	root = typeof self === OBJECT && self.self === self && self || typeof global === OBJECT && global.global === global && global || this,
-	_previous = root ? root.safe : void 0,
 	_keys = Object.keys,
 	_isArray = Array.isArray,
 	_MAX = Infinity,
@@ -18,6 +16,13 @@ const UNDEFINED = 'undefined',
 	];
 
 /* +++++++++++++++++++++++++ private functions +++++++++++++++++++++++++ */
+/**
+ * @name noop
+ * @static
+ * @method
+ */
+const noop = () => {};
+
 const _isObject = (obj) => {
 	if (obj === null)
 		return false;
@@ -54,6 +59,34 @@ const _throwError = (text, callback) => {
 	}
 
 	callback(err);
+};
+
+
+const _once = (callback) => {
+	let fired = false;
+
+	return (...args) => {
+		if (fired || callback == null)
+			return;
+
+		fired = true;
+
+		return callback(...args);
+	};
+};
+
+const _only_once = (callback) => {
+	let fired = false;
+
+	return (...args) => {
+		if (fired) {
+			throw new Error(_alreadyError);
+		}
+
+		fired = true;
+
+		return callback(...args);
+	};
 };
 
 const _iterator_array = (arr) => {
@@ -124,14 +157,6 @@ const _iterator = (obj) => {
 	return _iterator_obj(obj);
 };
 
-const _resolvePromise = (pr, callback) => {
-	pr.then((result) => {
-		back(callback, null, result);
-	}, (err) => {
-		back(callback, err);
-	});
-};
-
 const _eachLimit = (obj, limit, fn, callback) => {
 	let running = 0,
 		stop = false,
@@ -140,7 +165,7 @@ const _eachLimit = (obj, limit, fn, callback) => {
 
 	const _callback = _once(callback);
 
-	const task = () => {
+	function task () {
 		if (stop || err)
 			return;
 
@@ -169,7 +194,7 @@ const _eachLimit = (obj, limit, fn, callback) => {
 				}
 			});
 		}
-	};
+	}
 
 	task();
 };
@@ -178,31 +203,113 @@ const _doPsevdoAsync = (fn) => {
 	return (cb) => cb(null, fn());
 };
 
-const _once = (callback) => {
-	let fired = false;
+const _back = (() => {
+	if (typeof queueMicrotask === FUNCTION) {
+		return (callback, ...args) => {
+			queueMicrotask(() => {
+				callback(...args);
+			});
+		};
+	}
 
-	return (...args) => {
-		if (fired || callback == null)
-			return;
+	if (typeof setImmediate === FUNCTION) {
+		return setImmediate;
+	}
 
-		fired = true;
+	if (typeof process === UNDEFINED) {
+		if (typeof Image === FUNCTION) { // browser polyfill
 
-		return callback(...args);
+			return (callback, ...args) => {
+				// eslint-disable-next-line no-undef
+				const img = new Image;
+
+				img.onerror = () => {
+					callback(...args);
+				};
+
+				img.src = 'data:image/png,0';
+			};
+		}
+
+		return (callback, ...args) => {
+			setTimeout(callback, 0, ...args);
+		};
+	}
+
+	return (callback, ...args) => {
+		process.nextTick(() => {
+			callback(...args);
+		});
 	};
+})();
+
+/* +++++++++++++++++++++++++ public functions +++++++++++++++++++++++++ */
+/**
+ * @name back
+ * @static
+ * @method
+ * @alias setImmediate
+ * @alias yield
+ * @param {Function} callback
+ * @param {...any} [args]
+ */
+const back = (...args) => {
+	if (!_isFunction(args[0]))
+		throw new TypeError(_typedErrors[3]);
+
+	_back(...args);
 };
 
-const _only_once = (callback) => {
-	let fired = false;
+const _resolvePromise = (pr, callback) => {
+	pr.then((result) => {
+		back(callback, null, result);
+	}, (err) => {
+		back(callback, err);
+	});
+};
 
-	return (...args) => {
+/**
+ * @name run
+ * @static
+ * @method
+ * @param {Function} fn
+ * @param {Function} callback
+ */
+const run = (fn, callback) => {
+	if (_isAsyncFunction(fn)) {
+		_resolvePromise(fn(), callback);
+		return;
+	}
+
+	let getPromise, res, fired = false;
+
+	try {
+		res = fn(fin);
+	} catch (err) {
+		if (!err)
+			throw err;
+
+		_back(fin, err);
+	}
+
+	if (_isPromiseLike(res)) {
+		getPromise = "Resolution method is overspecified. Call a callback *or* return a Promise.";
+
 		if (fired) {
-			throw new Error(_alreadyError);
+			throw new Error(getPromise);
+		}
+
+		_resolvePromise(res, fin);
+	}
+
+	function fin (...args) {
+		if (fired) {
+			throw args[0] || new Error(getPromise || _alreadyError);
 		}
 
 		fired = true;
-
-		return callback(...args);
-	};
+		callback(...args);
+	}
 };
 
 const _map = (obj, limit, fn, callback) => {
@@ -253,7 +360,7 @@ const _groupBy = (obj, limit, fn, callback) => {
 				return cb(err);
 
 			cb(err, {
-				key: key,
+				key,
 				val: item
 			});
 		});
@@ -365,778 +472,6 @@ const _concat = (arr, limit, fn, callback) => {
 	_map(arr, limit, fn, (err, result) => {
 		callback(err, [].concat(...result));
 	});
-};
-
-const _swhile = (test, fn, dir, before, callback) => {
-	const task = () => {
-		run(fn, sure(callback, tester));
-	};
-
-	const tester = (result) => {
-		run(test, sure(callback, (res) => {
-			if (res == dir) {
-				callback(null, result);
-			} else {
-				task();
-			}
-		}));
-	};
-
-	if (before) {
-		tester();
-	} else {
-		task();
-	}
-};
-
-const _reduce = (arr, memo, fn, callback = noop, direction) => {
-	if (!_isArray(arr)) {
-		return _throwError(_typedErrors[1], callback);
-	}
-
-	const iterator = _iterator(arr),
-		len = arr.length;
-
-	const task = (err, _memo) => {
-		if (err) {
-			callback(err);
-			return;
-		}
-
-		const item = iterator.next();
-
-		if (item.done) {
-			callback(null, _memo);
-		} else {
-			run((cb) => fn(_memo, direction ? item.value : arr[len - 1 - item.key], cb), task);
-		}
-	};
-
-	task(null, memo);
-};
-
-const _applyEach = (limit) => {
-	/**
-	 * @name applyEach
-	 * @static
-	 * @method
-	 * @param {Object|Array|Iterable} fns
-	 * @param {...any} [args]
-	 * @param {Function} callback
-	 * @return {any}
-	 */
-	return function applyEach(fns, ...args) {
-		const task = function task(...args2) {
-			const callback = args2.pop();
-
-			_eachLimit(fns, limit, (fn, key, cb) => {
-				run((_cb) => {
-					return fn.apply(this, args2.concat(_cb));
-				}, cb);
-			}, callback);
-		};
-
-		if (args.length === 0) {
-			return task;
-		}
-
-		return task.apply(this, args);
-	};
-};
-
-/**
- * @class
- */
-class _Queue {
-	/**
-	 * Create a queue.
-	 * @param {Function} worker
-	 * @param {number} concurrency
-	 */
-	constructor(worker, concurrency) {
-		const _concurrency = parseInt(concurrency);
-
-		if (!_concurrency) {
-			throw new TypeError('Concurrency must not be zero');
-		}
-
-		Object.defineProperties(this, {
-			'__worker': {
-				enumerable: false,
-				configurable: false,
-				writable: false,
-				value: worker
-			},
-			'__workers': {
-				enumerable: false,
-				configurable: false,
-				writable: true,
-				value: 0
-			},
-			'__workersList': {
-				enumerable: false,
-				configurable: false,
-				writable: true,
-				value: []
-			},
-			'__isProcessing': {
-				enumerable: false,
-				configurable: false,
-				writable: true,
-				value: false
-			},
-			'__processingScheduled': {
-				enumerable: false,
-				configurable: false,
-				writable: true,
-				value: false
-			},
-			'tasks': {
-				enumerable: false,
-				configurable: false,
-				writable: false,
-				value: []
-			},
-			'concurrency': {
-				enumerable: true,
-				configurable: false,
-				writable: true,
-				value: _concurrency
-			},
-			'buffer': {
-				enumerable: true,
-				configurable: false,
-				writable: true,
-				value: _concurrency / 4
-			},
-			'started': {
-				enumerable: true,
-				configurable: false,
-				writable: true,
-				value: false
-			},
-			'paused': {
-				enumerable: true,
-				configurable: false,
-				writable: true,
-				value: false
-			}
-		});
-	}
-
-	__insert(data, pos, callback) {
-		if (callback != null && !_isFunction(callback)) {
-			throw new TypeError(_typedErrors[3]);
-		}
-
-		this.started = true;
-
-		const _data = _isArray(data) ? data : [data];
-
-		if (_data.length === 0 && this.idle()) {
-			return back(() => {
-				this.drain();
-			});
-		}
-
-		const arr = _data.map((task) => {
-			return {
-				data: task,
-				callback: _only_once(callback || noop)
-			};
-		});
-
-		if (pos) {
-			this.tasks.unshift(...arr);
-		} else {
-			this.tasks.push(...arr);
-		}
-
-		if (!this.__processingScheduled) {
-			this.__processingScheduled = true;
-			back(() => {
-				this.__processingScheduled = false;
-				this.__execute();
-			});
-		}
-	}
-
-	__execute() {
-		if (this.__isProcessing)
-			return;
-
-		this.__isProcessing = true;
-		while (!this.paused && this.__workers < this.concurrency && this.tasks.length) {
-			let task = this.tasks.shift();
-			this.__workersList.push(task);
-
-			if (this.tasks.length === 0)
-				this.empty();
-
-			let data = task.data;
-
-			this.__workers++;
-
-			if (this.__workers === this.concurrency)
-				this.saturated();
-
-			run((cb) => {
-				return this.__worker(data, cb);
-			}, (...args) => {
-				this.__workers--;
-
-				const index = this.__workersList.indexOf(task);
-				if (index === 0) {
-					this.__workersList.shift();
-				} else if (index > 0) {
-					this.__workersList.splice(index, 1);
-				}
-
-				task.callback(...args);
-
-				if (args[0]) {
-					this.error(args[0], data);
-				}
-
-				if (this.__workers <= this.concurrency - this.buffer) {
-					this.unsaturated();
-				}
-
-				if (this.idle())
-					this.drain();
-
-				this.__execute();
-			});
-		}
-		this.__isProcessing = false;
-	}
-
-	/**
-	 * remove items from the queue that match a test function
-	 * @param {Function} test function
-	 */
-	remove(test) {
-		let tasks = this.tasks.filter((item) => !test(item.data));
-
-		this.tasks.length = tasks.length;
-
-		tasks.forEach((item, key) => {
-			this.tasks[key] = item;
-		});
-	}
-
-	/**
-	 * add a new task to the queue
-	 * @param {any} data
-	 * @param {Function} callback
-	 */
-	push(data, callback) {
-		this.__insert(data, false, callback);
-	}
-
-	/**
-	 * callback that is called when the number of running workers
-	 * hits the `concurrency` limit, and further tasks will be queued.
-	 */
-	saturated() {}
-
-	/**
-	 * a callback that is called when the number of running workers
-	 * is less than the `concurrency` & `buffer` limits, and
-	 * further tasks will not be queued.
-	 */
-	unsaturated() {}
-
-	/**
-	 * a callback that is called when the last item
-	 * from the `queue` is given to a `worker`.
-	*/
-	empty() {}
-
-	/**
-	 * a callback that is called when the last item
-	 * from the `queue` has returned from the `worker`.
-	*/
-	drain() {}
-
-	/**
-	 * a callback that is called when a task errors.
-	 * @param {Error} err
-	 * @param {any} task
-	*/
-	error() {}
-
-	/**
-	 * a function that removes the `drain` callback
-	 * and empties remaining tasks from the queue
-	 */
-	kill() {
-		delete this.drain;
-		this.tasks.length = 0;
-	}
-
-	/**
-	 * a function returning the number of items in the queue
-	 * @return {number} length
-	 */
-	length() {
-		return this.tasks.length;
-	}
-
-	/**
-	 * a function returning the array of items of the queue
-	 * @return {Array} workers
-	 */
-	running() {
-		return this.__workers;
-	}
-
-	/**
-	 * a function returning false if there are items
-	 * waiting or being processed, or true if not
-	 * @return {boolena} processed
-	 */
-	idle() {
-		return this.tasks.length + this.__workers === 0;
-	}
-
-	/**
-	 * a function that pauses the processing of tasks
-	 */
-	pause() {
-		this.paused = true;
-	}
-
-	/**
-	 * a function that resumes the processing of the queued tasks
-	 */
-	resume() {
-		if (!this.paused)
-			return;
-
-		this.paused = false;
-		back(() => this.__execute());
-	}
-
-	/**
-	 * a function returning the array of items currently being processed
-	 * @return {Array} an active workers
-	 */
-	workersList() {
-		return this.__workersList;
-	}
-}
-
- /**
- * Creates a new priority queue.
- * @name PriorityQueue
- * @class
- * @extends _Queue
- */
-class PriorityQueue extends _Queue {
-	/**
-	 * Create a queue.
-	 * @param {Function} worker
-	 * @param {number} concurrency
-	 */
-	constructor(worker, concurrency) {
-		super(worker, concurrency, 'Priority Queue');
-	}
-
-	/**
-	 * add a new task to the queue
-	 * @param {any} data
-	 * @param {number} priority
-	 * @param {Function} callback
-	 */
-	push(data, priority, callback) {
-		this.__insert(data, priority || 0, callback);
-	}
-
-	__insert(data, prior, callback) {
-		if (callback != null && !_isFunction(callback)) {
-			throw new TypeError(_typedErrors[3]);
-		}
-
-		this.started = true;
-
-		const _data = _isArray(data) ? data : [data];
-
-		if (_data.length === 0 && this.idle()) {
-			return back(() => {
-				this.drain();
-			});
-		}
-
-		const arr = _data.map((task) => {
-			return {
-				data: task,
-				priority: prior,
-				callback: _only_once(callback || noop)
-			};
-		});
-
-		let tlen = this.tasks.length,
-			firstidx = tlen ? this.tasks[0].priority : 0,
-			lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
-
-		if (prior > firstidx) {
-			this.tasks.unshift(...arr);
-		} else {
-			this.tasks.push(...arr);
-		}
-
-		if (firstidx >= prior && prior < lastidx) {
-			this.tasks.sort((b, a) => a.priority - b.priority); // reverse sort
-		}
-
-		if (!this.__processingScheduled) {
-			this.__processingScheduled = true;
-			back(() => {
-				this.__processingScheduled = false;
-				this.__execute();
-			});
-		}
-	}
-}
-
-/**
- * Creates a new queue.
- * @name Queue
- * @class
- * @extends _Queue
- */
-class Queue extends _Queue {
-	/**
-	 * Create a queue.
-	 * @param {Function} worker
-	 * @param {number} concurrency
-	 */
-	constructor(worker, concurrency) {
-		super(worker, concurrency, 'Queue');
-	}
-
-	/**
-	 * add a new task to the front of the queue
-	 * @param {any} data
-	 * @param {Function} callback
-	 */
-	unshift(data, callback) {
-		this.__insert(data, true, callback);
-	}
-}
-
-  /**
- * Creates a new cargo queue.
- * @name CargoQueue
- * @class
- * @extends _Queue
- */
-class CargoQueue extends _Queue {
-	/**
-	 * Create a cargo queue.
-	 * @param {Function} worker
-	 * @param {number} payload
-	 */
-	constructor(worker, payload) {
-		super(worker, 1, 'Cargo');
-
-		const _payload = parseInt(payload);
-
-		if (!_payload) {
-			throw new TypeError('Payload must not be zero');
-		}
-
-		Object.defineProperties(this, {
-			'payload': {
-				enumerable: true,
-				configurable: false,
-				writable: true,
-				value: _payload
-			}
-		});
-	}
-
-	__execute() {
-		if (this.__isProcessing)
-			return;
-
-		this.__isProcessing = true;
-		while (!this.paused && this.__workers < this.concurrency && this.tasks.length) {
-			let tasks = this.tasks.splice(0, this.payload);
-			this.__workersList.push(...tasks);
-
-			if (this.tasks.length === 0)
-				this.empty();
-
-			let data = tasks.map(_byData);
-
-			this.__workers++;
-
-			if (this.__workers === this.concurrency)
-				this.saturated();
-
-			run((cb) => {
-				return this.__worker(data, cb);
-			}, (...args) => {
-				this.__workers--;
-
-				tasks.forEach((task) => {
-					const index = this.__workersList.indexOf(task);
-					if (index === 0) {
-						this.__workersList.shift();
-					} else if (index > 0) {
-						this.__workersList.splice(index, 1);
-					}
-
-					task.callback(...args);
-				});
-
-				if (this.__workers <= this.concurrency - this.buffer) {
-					this.unsaturated();
-				}
-
-				if (this.idle())
-					this.drain();
-
-				this.__execute();
-			});
-		}
-		this.__isProcessing = false;
-	}
-}
-
-/* +++++++++++++++++++++++++ public functions +++++++++++++++++++++++++ */
-/**
- * @name back
- * @static
- * @method
- * @alias setImmediate
- * @alias yield
- * @param {Function} callback
- * @param {...any} [args]
- */
-const back = (() => {
-	if (typeof setImmediate === UNDEFINED) {
-		if (typeof process === UNDEFINED) {
-			if (typeof Image === FUNCTION) { // browser polyfill
-
-				return (callback, ...args) => {
-					if (!_isFunction(callback))
-						throw new TypeError(_typedErrors[3]);
-
-					const img = new Image;
-
-					img.onerror = () => {
-						callback(...args);
-					};
-
-					img.src = 'data:image/png,0';
-				};
-			}
-
-			return (callback, ...args) => {
-				if (!_isFunction(callback))
-					throw new TypeError(_typedErrors[3]);
-
-				setTimeout(callback, 0, ...args);
-			};
-		}
-
-		return (callback, ...args) => {
-			if (!_isFunction(callback))
-				throw new TypeError(_typedErrors[3]);
-
-			process.nextTick(() => {
-				callback(...args);
-			});
-		};
-	}
-
-	return (...args) => {
-		if (!_isFunction(args[0]))
-			throw new TypeError(_typedErrors[3]);
-
-		setImmediate(...args);
-	};
-})();
-
-const noConflict = () => {
-	root.safe = _previous;
-	return this;
-};
-
-/**
- * @name nextTick
- * @static
- * @method
- * @param {Function} callback
- */
-const nextTick = typeof process !== UNDEFINED && process.nextTick ? process.nextTick : back;
-
-/**
- * @name noop
- * @static
- * @method
- */
-const noop = () => {};
-
-/**
- * @name apply
- * @static
- * @method
- * @param {Function} fn
- * @param {...ary} args
- * @return {Function} wrapped function
- */
-const apply = (fn, ...args) => {
-	/**
-	 * @param {...any} args2
-	 * @return {any}
-	 */
-	const _wrappedFn = (...args2) => fn(...args, ...args2);
-	return _wrappedFn;
-};
-
-/**
- * @deprecated
- * @name args
- * @static
- * @method
- * @param {...any} args
- * @return {Array}
- */
-const argToArr = function argToArr(...args) {
-	const len = args.length,
-		rest = parseInt(this);
-
-	if (rest !== rest) // check for NaN
-		throw new Error('Pass arguments to "safe.args" only through ".apply" method!');
-
-	if (len === 0 || rest > len)
-		return [];
-
-	const arr = Array(len - rest);
-
-	for (let i = rest; i < len; i++) {
-		arr[i - rest] = i < 0 ? null : args[i];
-	}
-
-	return arr;
-};
-
-/**
- * @name constant
- * @static
- * @method
- * @param {...Array} args
- * @return {Function}
- */
-const constant = (...args) => {
-	/**
-	 * @param {Function} callback
-	 * @return {any}
-	 */
-	return (callback) => {
-		return callback(null, ...args);
-	};
-};
-
-/**
- * @name ensureAsync
- * @static
- * @method
- * @param {Function} fn
- * @return {Function} wrapped function
- */
-const ensureAsync = (fn) => {
-	/**
-	 * {...any} args
-	 * @param {Function} callback
-	 * @return {any}
-	 */
-	return function _wrappedFn(...args) {
-		let sync = true;
-		const callback = args[args.length - 1];
-
-		args[args.length - 1] = function _wrappedCallback(...args2) {
-			if (sync)
-				back(() => callback.apply(this, args2));
-			else
-				callback.apply(this, args2);
-		};
-
-		const r = fn.apply(this, args);
-		sync = false;
-		return r;
-	};
-};
-
-/**
- * @name asyncify
- * @static
- * @method
- * @alias wrapSync
- * @param {AyncFunction} fn
- * @return {Function} wrapped function
- */
-const asyncify = (fn) => {
-	/**
-	 * {...any} args
-	 * @param {Function} callback
-	 */
-	return function _wrappedFn(...args) {
-		const callback = args.pop();
-
-		run((cb) => {
-			const res = fn.apply(this, args);
-			return (_isAsyncFunction(fn) || _isPromiseLike(res)) ? res : cb(null, res);
-		}, callback);
-	};
-};
-
-/**
- * @name run
- * @static
- * @method
- * @param {Function} fn
- * @param {Function} callback
- */
-const run = (fn, callback) => {
-	if (_isAsyncFunction(fn)) {
-		_resolvePromise(fn(), callback);
-		return;
-	}
-
-	let getPromise, res, fired = false;
-
-	const fin = (...args) => {
-		if (fired) {
-			throw args[0] || new Error(getPromise || _alreadyError);
-		}
-
-		fired = true;
-		callback(...args);
-	};
-
-	try {
-		res = fn(fin);
-	} catch (err) {
-		if (!err)
-			throw err;
-
-		back(fin, err);
-	}
-
-	if (_isPromiseLike(res)) {
-		getPromise = "Resolution method is overspecified. Call a callback *or* return a Promise.";
-
-		if (fired) {
-			throw new Error(getPromise);
-		}
-
-		_resolvePromise(res, fin);
-	}
 };
 
 /**
@@ -1366,6 +701,667 @@ const spread = (fn) => {
 	};
 };
 
+const _swhile = (test, fn, dir, before, callback) => {
+	if (before) {
+		tester();
+	} else {
+		task();
+	}
+
+	function task () {
+		run(fn, sure(callback, tester));
+	}
+
+	function tester (result) {
+		run(test, sure(callback, (res) => {
+			if (res == dir) {
+				callback(null, result);
+			} else {
+				task();
+			}
+		}));
+	}
+};
+
+const _reduce = (arr, memo, fn, callback = noop, direction) => {
+	if (!_isArray(arr)) {
+		return _throwError(_typedErrors[1], callback);
+	}
+
+	const iterator = _iterator(arr),
+		len = arr.length;
+
+	const task = (err, _memo) => {
+		if (err) {
+			callback(err);
+			return;
+		}
+
+		const item = iterator.next();
+
+		if (item.done) {
+			callback(null, _memo);
+		} else {
+			run((cb) => fn(_memo, direction ? item.value : arr[len - 1 - item.key], cb), task);
+		}
+	};
+
+	task(null, memo);
+};
+
+const _applyEach = (limit) => {
+	/**
+	 * @name applyEach
+	 * @static
+	 * @method
+	 * @param {Object|Array|Iterable} fns
+	 * @param {...any} [args]
+	 * @param {Function} callback
+	 * @return {any}
+	 */
+	return function applyEach(fns, ...args) {
+		const task = function task(...args2) {
+			const callback = args2.pop();
+
+			_eachLimit(fns, limit, (fn, key, cb) => {
+				run((_cb) => {
+					return fn.apply(this, args2.concat(_cb));
+				}, cb);
+			}, callback);
+		};
+
+		if (args.length === 0) {
+			return task;
+		}
+
+		return task.apply(this, args);
+	};
+};
+
+/**
+ * @class
+ */
+class _Queue {
+	/**
+	 * Create a queue.
+	 * @param {Function} worker
+	 * @param {number} concurrency
+	 */
+	constructor(worker, concurrency) {
+		const _concurrency = parseInt(concurrency);
+
+		if (!_concurrency) {
+			throw new TypeError('Concurrency must not be zero');
+		}
+
+		Object.defineProperties(this, {
+			'__worker': {
+				enumerable: false,
+				configurable: false,
+				writable: false,
+				value: worker
+			},
+			'__workers': {
+				enumerable: false,
+				configurable: false,
+				writable: true,
+				value: 0
+			},
+			'__workersList': {
+				enumerable: false,
+				configurable: false,
+				writable: true,
+				value: []
+			},
+			'__isProcessing': {
+				enumerable: false,
+				configurable: false,
+				writable: true,
+				value: false
+			},
+			'__processingScheduled': {
+				enumerable: false,
+				configurable: false,
+				writable: true,
+				value: false
+			},
+			'tasks': {
+				enumerable: false,
+				configurable: false,
+				writable: false,
+				value: []
+			},
+			'concurrency': {
+				enumerable: true,
+				configurable: false,
+				writable: true,
+				value: _concurrency
+			},
+			'buffer': {
+				enumerable: true,
+				configurable: false,
+				writable: true,
+				value: _concurrency / 4
+			},
+			'started': {
+				enumerable: true,
+				configurable: false,
+				writable: true,
+				value: false
+			},
+			'paused': {
+				enumerable: true,
+				configurable: false,
+				writable: true,
+				value: false
+			}
+		});
+	}
+
+	__insert(data, pos, callback) {
+		if (callback != null && !_isFunction(callback)) {
+			throw new TypeError(_typedErrors[3]);
+		}
+
+		this.started = true;
+
+		const _data = _isArray(data) ? data : [data];
+
+		if (_data.length === 0 && this.idle()) {
+			return _back(() => {
+				this.drain();
+			});
+		}
+
+		const arr = _data.map((task) => {
+			return {
+				data: task,
+				callback: _only_once(callback || noop)
+			};
+		});
+
+		if (pos) {
+			this.tasks.unshift(...arr);
+		} else {
+			this.tasks.push(...arr);
+		}
+
+		if (!this.__processingScheduled) {
+			this.__processingScheduled = true;
+			_back(() => {
+				this.__processingScheduled = false;
+				this.__execute();
+			});
+		}
+	}
+
+	__execute() {
+		if (this.__isProcessing)
+			return;
+
+		this.__isProcessing = true;
+		while (!this.paused && this.__workers < this.concurrency && this.tasks.length) {
+			let task = this.tasks.shift();
+			this.__workersList.push(task);
+
+			if (this.tasks.length === 0)
+				this.empty();
+
+			let data = task.data;
+
+			this.__workers++;
+
+			if (this.__workers === this.concurrency)
+				this.saturated();
+
+			run((cb) => {
+				return this.__worker(data, cb);
+			}, (...args) => {
+				this.__workers--;
+
+				const index = this.__workersList.indexOf(task);
+				if (index === 0) {
+					this.__workersList.shift();
+				} else if (index > 0) {
+					this.__workersList.splice(index, 1);
+				}
+
+				task.callback(...args);
+
+				if (args[0]) {
+					this.error(args[0], data);
+				}
+
+				if (this.__workers <= this.concurrency - this.buffer) {
+					this.unsaturated();
+				}
+
+				if (this.idle())
+					this.drain();
+
+				this.__execute();
+			});
+		}
+		this.__isProcessing = false;
+	}
+
+	/**
+	 * remove items from the queue that match a test function
+	 * @param {Function} test function
+	 */
+	remove(test) {
+		let tasks = this.tasks.filter((item) => !test(item.data));
+
+		this.tasks.length = tasks.length;
+
+		tasks.forEach((item, key) => {
+			this.tasks[key] = item;
+		});
+	}
+
+	/**
+	 * add a new task to the queue
+	 * @param {any} data
+	 * @param {Function} callback
+	 */
+	push(data, callback) {
+		this.__insert(data, false, callback);
+	}
+
+	/**
+	 * callback that is called when the number of running workers
+	 * hits the `concurrency` limit, and further tasks will be queued.
+	 */
+	saturated() {}
+
+	/**
+	 * a callback that is called when the number of running workers
+	 * is less than the `concurrency` & `buffer` limits, and
+	 * further tasks will not be queued.
+	 */
+	unsaturated() {}
+
+	/**
+	 * a callback that is called when the last item
+	 * from the `queue` is given to a `worker`.
+	*/
+	empty() {}
+
+	/**
+	 * a callback that is called when the last item
+	 * from the `queue` has returned from the `worker`.
+	*/
+	drain() {}
+
+	/**
+	 * a callback that is called when a task errors.
+	 * @param {Error} err
+	 * @param {any} task
+	*/
+	error() {}
+
+	/**
+	 * a function that removes the `drain` callback
+	 * and empties remaining tasks from the queue
+	 */
+	kill() {
+		delete this.drain;
+		this.tasks.length = 0;
+	}
+
+	/**
+	 * a function returning the number of items in the queue
+	 * @return {number} length
+	 */
+	length() {
+		return this.tasks.length;
+	}
+
+	/**
+	 * a function returning the array of items of the queue
+	 * @return {Array} workers
+	 */
+	running() {
+		return this.__workers;
+	}
+
+	/**
+	 * a function returning false if there are items
+	 * waiting or being processed, or true if not
+	 * @return {boolena} processed
+	 */
+	idle() {
+		return this.tasks.length + this.__workers === 0;
+	}
+
+	/**
+	 * a function that pauses the processing of tasks
+	 */
+	pause() {
+		this.paused = true;
+	}
+
+	/**
+	 * a function that resumes the processing of the queued tasks
+	 */
+	resume() {
+		if (!this.paused)
+			return;
+
+		this.paused = false;
+		_back(() => this.__execute());
+	}
+
+	/**
+	 * a function returning the array of items currently being processed
+	 * @return {Array} an active workers
+	 */
+	workersList() {
+		return this.__workersList;
+	}
+}
+
+/**
+ * Creates a new priority queue.
+ * @name PriorityQueue
+ * @class
+ * @extends _Queue
+ */
+class PriorityQueue extends _Queue {
+	/**
+	 * Create a queue.
+	 * @param {Function} worker
+	 * @param {number} concurrency
+	 */
+	constructor(worker, concurrency) {
+		super(worker, concurrency, 'Priority Queue');
+	}
+
+	/**
+	 * add a new task to the queue
+	 * @param {any} data
+	 * @param {number} priority
+	 * @param {Function} callback
+	 */
+	push(data, priority, callback) {
+		this.__insert(data, priority || 0, callback);
+	}
+
+	__insert(data, prior, callback) {
+		if (callback != null && !_isFunction(callback)) {
+			throw new TypeError(_typedErrors[3]);
+		}
+
+		this.started = true;
+
+		const _data = _isArray(data) ? data : [data];
+
+		if (_data.length === 0 && this.idle()) {
+			return _back(() => {
+				this.drain();
+			});
+		}
+
+		const arr = _data.map((task) => {
+			return {
+				data: task,
+				priority: prior,
+				callback: _only_once(callback || noop)
+			};
+		});
+
+		let tlen = this.tasks.length,
+			firstidx = tlen ? this.tasks[0].priority : 0,
+			lastidx = tlen ? this.tasks[tlen - 1].priority : 0;
+
+		if (prior > firstidx) {
+			this.tasks.unshift(...arr);
+		} else {
+			this.tasks.push(...arr);
+		}
+
+		if (firstidx >= prior && prior < lastidx) {
+			this.tasks.sort((b, a) => a.priority - b.priority); // reverse sort
+		}
+
+		if (!this.__processingScheduled) {
+			this.__processingScheduled = true;
+			_back(() => {
+				this.__processingScheduled = false;
+				this.__execute();
+			});
+		}
+	}
+}
+
+/**
+ * Creates a new queue.
+ * @name Queue
+ * @class
+ * @extends _Queue
+ */
+class Queue extends _Queue {
+	/**
+	 * Create a queue.
+	 * @param {Function} worker
+	 * @param {number} concurrency
+	 */
+	constructor(worker, concurrency) {
+		super(worker, concurrency, 'Queue');
+	}
+
+	/**
+	 * add a new task to the front of the queue
+	 * @param {any} data
+	 * @param {Function} callback
+	 */
+	unshift(data, callback) {
+		this.__insert(data, true, callback);
+	}
+}
+
+/**
+ * Creates a new cargo queue.
+ * @name CargoQueue
+ * @class
+ * @extends _Queue
+ */
+class CargoQueue extends _Queue {
+	/**
+	 * Create a cargo queue.
+	 * @param {Function} worker
+	 * @param {number} payload
+	 */
+	constructor(worker, payload) {
+		super(worker, 1, 'Cargo');
+
+		const _payload = parseInt(payload);
+
+		if (!_payload) {
+			throw new TypeError('Payload must not be zero');
+		}
+
+		Object.defineProperties(this, {
+			'payload': {
+				enumerable: true,
+				configurable: false,
+				writable: true,
+				value: _payload
+			}
+		});
+	}
+
+	__execute() {
+		if (this.__isProcessing)
+			return;
+
+		this.__isProcessing = true;
+		while (!this.paused && this.__workers < this.concurrency && this.tasks.length) {
+			let tasks = this.tasks.splice(0, this.payload);
+			this.__workersList.push(...tasks);
+
+			if (this.tasks.length === 0)
+				this.empty();
+
+			let data = tasks.map(_byData);
+
+			this.__workers++;
+
+			if (this.__workers === this.concurrency)
+				this.saturated();
+
+			run((cb) => {
+				return this.__worker(data, cb);
+			}, (...args) => {
+				this.__workers--;
+
+				tasks.forEach((task) => {
+					const index = this.__workersList.indexOf(task);
+					if (index === 0) {
+						this.__workersList.shift();
+					} else if (index > 0) {
+						this.__workersList.splice(index, 1);
+					}
+
+					task.callback(...args);
+				});
+
+				if (this.__workers <= this.concurrency - this.buffer) {
+					this.unsaturated();
+				}
+
+				if (this.idle())
+					this.drain();
+
+				this.__execute();
+			});
+		}
+		this.__isProcessing = false;
+	}
+}
+
+/**
+ * @name nextTick
+ * @static
+ * @method
+ * @param {Function} callback
+ */
+const nextTick = (typeof process !== UNDEFINED && process.nextTick) ? process.nextTick : typeof queueMicrotask === FUNCTION ? queueMicrotask : _back;
+
+/**
+ * @name apply
+ * @static
+ * @method
+ * @param {Function} fn
+ * @param {...ary} args
+ * @return {Function} wrapped function
+ */
+const apply = (fn, ...args) => {
+	/**
+	 * @param {...any} args2
+	 * @return {any}
+	 */
+	const _wrappedFn = (...args2) => fn(...args, ...args2);
+	return _wrappedFn;
+};
+
+/**
+ * @deprecated
+ * @name args
+ * @static
+ * @method
+ * @param {...any} args
+ * @return {Array}
+ */
+const argToArr = function argToArr(...args) {
+	const len = args.length,
+		rest = parseInt(this);
+
+	if (rest !== rest) // check for NaN
+		throw new Error('Pass arguments to "safe.args" only through ".apply" method!');
+
+	if (len === 0 || rest > len)
+		return [];
+
+	const arr = Array(len - rest);
+
+	for (let i = rest; i < len; i++) {
+		arr[i - rest] = i < 0 ? null : args[i];
+	}
+
+	return arr;
+};
+
+/**
+ * @name constant
+ * @static
+ * @method
+ * @param {...Array} args
+ * @return {Function}
+ */
+const constant = (...args) => {
+	/**
+	 * @param {Function} callback
+	 * @return {any}
+	 */
+	return (callback) => {
+		return callback(null, ...args);
+	};
+};
+
+/**
+ * @name ensureAsync
+ * @static
+ * @method
+ * @param {Function} fn
+ * @return {Function} wrapped function
+ */
+const ensureAsync = (fn) => {
+	/**
+	 * {...any} args
+	 * @param {Function} callback
+	 * @return {any}
+	 */
+	return function _wrappedFn(...args) {
+		let sync = true;
+		const callback = args[args.length - 1];
+
+		args[args.length - 1] = function _wrappedCallback(...args2) {
+			if (sync)
+				_back(() => callback.apply(this, args2));
+			else
+				callback.apply(this, args2);
+		};
+
+		const r = fn.apply(this, args);
+		sync = false;
+		return r;
+	};
+};
+
+/**
+ * @name asyncify
+ * @static
+ * @method
+ * @alias wrapSync
+ * @param {AyncFunction} fn
+ * @return {Function} wrapped function
+ */
+const asyncify = (fn) => {
+	/**
+	 * {...any} args
+	 * @param {Function} callback
+	 */
+	return function _wrappedFn(...args) {
+		const callback = args.pop();
+
+		run((cb) => {
+			const res = fn.apply(this, args);
+			return (_isAsyncFunction(fn) || _isPromiseLike(res)) ? res : cb(null, res);
+		}, callback);
+	};
+};
+
 /**
  * @name inherits
  * @static
@@ -1398,7 +1394,7 @@ const async = (_this, fn, ...args) => {
 	 */
 	const _wrappedFn = (callback) => {
 		try {
-			return _this[fn].apply(_this, args.concat(callback));
+			return _this[fn](...args.concat(callback));
 		} catch (err) {
 			if (!err)
 				throw err;
@@ -1608,7 +1604,7 @@ const eachSeries = (arr, iterator, callback = noop) => {
  * @param {Function} [callback]
  */
 const eachOf = (obj, iterator, callback = noop) => {
-	if (!_isObject(obj, callback)) {
+	if (!_isObject(obj)) {
 		_throwError(_typedErrors[0], callback);
 		return;
 	}
@@ -2024,7 +2020,7 @@ const auto = (tasks, limit, callback) => {
 
 	const _callback = _once(callback);
 
-	const task = () => {
+	function task () {
 		_tasks.forEach((k) => {
 			if (stop || running >= limit || starter[k]) {
 				return;
@@ -2077,7 +2073,7 @@ const auto = (tasks, limit, callback) => {
 				}
 			});
 		});
-	};
+	}
 
 	task();
 };
@@ -2165,9 +2161,9 @@ const forever = (iterator, callback = noop) => {
 	const _callback = _only_once(callback),
 		_fn = ensureAsync(iterator);
 
-	const task = () => {
+	function task () {
 		_fn(sure(_callback, task));
-	};
+	}
 
 	task();
 };
@@ -2189,7 +2185,7 @@ const memoize = (fn, hasher = ((v) => v)) => {
 			key = hasher(...args);
 
 		if (_hop.call(memo, key)) {
-			back(() => callback(...memo[key]));
+			_back(() => callback(...memo[key]));
 		} else if (_hop.call(queues, key)) {
 			queues[key].push(callback);
 		} else {
@@ -2281,6 +2277,7 @@ const retry = function (obj, iterator, callback) {
 					if (errorFilter && !errorFilter(err))
 						cb(true);
 					else {
+						// eslint-disable-next-line sonarjs/no-extra-arguments
 						let int = intervalFunc(key + 1);
 
 						if (int > 0) {
@@ -2344,7 +2341,7 @@ const reflect = (iterator) => {
 		args[args.length - 1] = function _wrappedCallback(error, ...args2) {
 			if (error) {
 				callback(null, {
-					error: error
+					error
 				});
 			} else {
 				let value;
@@ -2356,7 +2353,7 @@ const reflect = (iterator) => {
 				}
 
 				callback(null, {
-					value: value
+					value
 				});
 			}
 		};
@@ -2366,11 +2363,11 @@ const reflect = (iterator) => {
 		if (_isAsyncFunction(iterator) || _isPromiseLike(res)) {
 			res.then((value) => {
 				back(callback, null, {
-					value: value
+					value
 				});
 			}, (error) => {
 				back(callback, null, {
-					error: error
+					error
 				});
 			});
 		}
@@ -2423,14 +2420,14 @@ const race = (tasks, callback) => {
 };
 
 /**
- * @name race
+ * @name tryEach
  * @static
  * @method
  * @param {Object|Array|Iterable} obj
  * @param {Function} [callback]
  */
 const tryEach = (obj, callback = noop) => {
-	if (!_isObject(obj, callback)) {
+	if (!_isObject(obj)) {
 		_throwError(_typedErrors[0], callback);
 		return;
 	}
@@ -2585,14 +2582,13 @@ const applyEach = _applyEach(_MAX);
 const applyEachSeries = _applyEach(1);
 
 const safe = {
-	noConflict,
 	noop,
 	nextTick,
 	back,
 	setImmediate: back,
 	yield: back,
 	apply,
-	async: async,
+	async,
 	inherits,
 	args: argToArr,
 	ensureAsync,
@@ -2695,7 +2691,6 @@ const safe = {
 };
 
 exports['default'] = safe;
-exports.noConflict = noConflict;
 exports.noop = noop;
 exports.nextTick = nextTick;
 exports.back = back;
