@@ -2,7 +2,7 @@
  * safejs
  * https://github.com/sergeyksv/safejs
  *
- * Copyright 2012-2021 PushOk Software
+ * Copyright 2012-2023 PushOk Software
  * Licensed under MIT
  */
 !(function (global, factory) {

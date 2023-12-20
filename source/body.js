@@ -204,16 +204,16 @@ const _doPsevdoAsync = (fn) => {
 };
 
 const _back = (() => {
+	if (typeof setImmediate === FUNCTION) {
+		return setImmediate;
+	}
+
 	if (typeof queueMicrotask === FUNCTION) {
 		return (callback, ...args) => {
 			queueMicrotask(() => {
 				callback(...args);
 			});
 		};
-	}
-
-	if (typeof setImmediate === FUNCTION) {
-		return setImmediate;
 	}
 
 	if (typeof process === UNDEFINED) {
